@@ -244,7 +244,7 @@ Asynchronously request prediction on provided inputs.
 
  - <b>`model_name`</b>:  name of the requested model. Accepted types: `string`.
  - <b>`model_version`</b> <i>(optional)</i>: version of the requested model. Accepted types: `positive integer`. Value 0 is special and means the latest served version will be chosen <i>(only in OVMS, TFS requires specific version number provided)</i>. Default value: 0.
- - <b>`callback`</b> <i>(optional)</i>: Callable that will be called on request completion. When request processing finishes, two arguments are provided to the `callback` - `result` and `error`, being 1st and 2nd argument. If `error` is not None, prediction failed. 
+ - <b>`callback`</b> <i>(optional)</i>: Callable that will be called on request completion. When request processing finishes, `result` and `error` are provided to the `callback`, as the last two arguments. If `error` is not None, prediction failed.
 
 
 **Returns:**
@@ -282,14 +282,15 @@ result = prediction_future.result()
 
 
 # asynchronously request prediction and use callback to handle the results
+from functools import partial
 
-def add_result_to_outputs(result, error, outputs):
+def add_result_to_outputs(outputs, result, error):
     if error is not None:
         outputs.append(result)
 
 outputs = []
-my_callback = lambda result, error: add_result_to_outputs(result, error, outputs)
-client.predict_async(inputs=inputs, model_name="model", callback=my_callback)
+client.predict_async(inputs=inputs, model_name="model", 
+                     callback=partial(add_result_to_outputs, outputs))
 
 ```
 
