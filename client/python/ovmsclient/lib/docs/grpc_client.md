@@ -212,4 +212,87 @@ results = client.predict(inputs=inputs, model_name="model")
 
 ---
 
+<a href="../../lib/ovmsclient/tfs_compat/grpc/serving_client.py#LXX"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `predict_async`
+
+```python
+predict_async(inputs, model_name, model_version, callback)
+```
+
+Asynchronously request prediction on provided inputs. 
+
+
+**Args:**
+ 
+- <b>`inputs`</b>: dictionary in form
+    ```python
+    {
+        ...
+        <input_name>:<input_data>
+        ...
+    }
+    ```               
+    Following types are accepted: 
+
+    | Key | Value type |
+    |---|---|
+    | input_name | string |
+    | input_data | python scalar, python list, numpy scalar, numpy array, TensorProto |        
+
+    If provided **input_data** is not TensorProto, the `make_tensor_proto` function with default parameters will be called internally. 
+
+ - <b>`model_name`</b>:  name of the requested model. Accepted types: `string`.
+ - <b>`model_version`</b> <i>(optional)</i>: version of the requested model. Accepted types: `positive integer`. Value 0 is special and means the latest served version will be chosen <i>(only in OVMS, TFS requires specific version number provided)</i>. Default value: 0.
+ - <b>`callback`</b> <i>(optional)</i>: Callable that will be called on request completion. When request processing finishes, two arguments are provided to the `callback` - `result` and `error`, being 1st and 2nd argument. If `error` is not None, prediction failed. 
+
+
+**Returns:**
+`Future object` bound to the asynchronous prediction. 
+
+Calling `result()` method on the `future object` should return:
+
+ - if model has one output: `numpy ndarray` with prediction results
+ - if model has multiple outputs: `dictionary` in form:
+     ```python
+    {
+        ...
+        <output_name>:<prediction_result>
+        ...
+    }
+    ```   
+    Where `output_name` is a `string` and `prediction_result` is a `numpy ndarray`
+
+
+**Raises:**
+
+# TO DO
+
+
+**Examples:**
+
+```python
+import ovmsclient
+client = ovmsclient.make_grpc_client("localhost:9000")
+inputs = {"input": [1, 2, 3]}
+# asynchronously request prediction and wait for the results
+prediction_future = client.predict_async(inputs=inputs, model_name="model", model_version=1)
+...
+result = prediction_future.result()
+
+
+# asynchronously request prediction and use callback to handle the results
+
+def add_result_to_outputs(result, error, outputs):
+    if error is not None:
+        outputs.append(result)
+
+outputs = []
+my_callback = lambda result, error: add_result_to_outputs(result, error, outputs)
+client.predict_async(inputs=inputs, model_name="model", callback=my_callback)
+
+```
+
+---
+
 <a href="README.md">Return to the main page</a>
