@@ -23,6 +23,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "inferencerequest.hpp"
+#include "inferencetensor.hpp"
 #include "kfs_frontend/kfs_grpc_inference_service.hpp"
 #include "kfs_frontend/kfs_utils.hpp"
 #include "modelconfig.hpp"
@@ -689,6 +691,12 @@ template <>
 Status validate(const KFSRequest& request, const tensor_map_t& inputsInfo, const std::string& servableName, const model_version_t servableVersion, const std::set<std::string>& optionalAllowedInputNames, const Mode batchingMode, const shapes_info_map_t& shapeInfo) {
     OVMS_PROFILE_FUNCTION();
     return RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorType, KFSShapeType>(request, inputsInfo, servableName, servableVersion, optionalAllowedInputNames, batchingMode, shapeInfo).validate();
+}
+
+template <>
+Status validate(const InferenceRequest& request, const tensor_map_t& inputsInfo, const std::string& servableName, const model_version_t servableVersion, const std::set<std::string>& optionalAllowedInputNames, const Mode batchingMode, const shapes_info_map_t& shapeInfo) {
+    OVMS_PROFILE_FUNCTION();
+    return RequestValidator<InferenceRequest, InferenceTensor, DataType, Shape>(request, inputsInfo, servableName, servableVersion, optionalAllowedInputNames, batchingMode, shapeInfo).validate();
 }
 }  // namespace request_validation_utils
 }  // namespace ovms

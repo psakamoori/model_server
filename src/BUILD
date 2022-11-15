@@ -642,6 +642,7 @@ cc_test(
         "test/ovinferrequestqueue_test.cpp",
         "test/ov_utils_test.cpp",
         "test/pipelinedefinitionstatus_test.cpp",
+        "test/capi_predict_validation_test.cpp",
         "test/predict_validation_test.cpp",
         "test/prediction_service_test.cpp",
         "test/tfs_rest_parser_row_test.cpp",
