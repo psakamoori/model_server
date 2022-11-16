@@ -96,6 +96,8 @@ cc_library(
         "azurefilesystem.hpp",
         "buffer.cpp",
         "buffer.hpp",
+        "capi_frontend/capi_utils.cpp",
+        "capi_frontend/capi_utils.hpp",
         "cleaner_utils.cpp",
         "cleaner_utils.hpp",
         "config.cpp",

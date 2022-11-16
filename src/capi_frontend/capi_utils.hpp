@@ -1,5 +1,5 @@
 //*****************************************************************************
-// Copyright 2021 Intel Corporation
+// Copyright 2022 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,45 +14,20 @@
 // limitations under the License.
 //*****************************************************************************
 #pragma once
-
 #include <string>
 
-#include <openvino/openvino.hpp>
+
+#include "../inferenceresponse.hpp"
+#include "../precision.hpp"
+#include "../shape.hpp"
 
 namespace ovms {
+class Status;
+std::string tensorShapeToString(const Shape& tensorShape);
 
-enum class Precision {
-    BF16,
-    FP64,
-    FP32,
-    FP16,
-    I64,
-    I32,
-    I16,
-    I8,
-    I4,
-    U64,
-    U32,
-    U16,
-    U8,
-    U4,
-    U1,
-    BOOL,
-    CUSTOM,
-    UNDEFINED,
-    DYNAMIC,
-    MIXED,
-    Q78,
-    BIN,  // TODO remove BIN,Q78, DYNAMIC, CUSTOM, MIXED
-    INVALID,
-};
+Precision PrecisionToOvmsPrecision(const DataType& s);
+const DataType& ovmsPrecisionToPrecision(Precision precision);
 
-const std::string& toString(Precision precision);
-
-Precision fromString(const std::string& s);
-
-Precision ovElementTypeToOvmsPrecision(ov::element::Type_t type);
-
-ov::element::Type_t ovmsPrecisionToIE2Precision(Precision precision);
-
+size_t DataTypeSize(const DataType& datatype);
+Status prepareConsolidatedTensorImpl(InferenceResponse* response, char*& tensorOut, const std::string& name, size_t size);
 }  // namespace ovms
