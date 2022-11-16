@@ -155,7 +155,7 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
 }
 
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateRequestCoherency() const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::validateRequestCoherency() const {
     return StatusCode::OK;
 }
 
@@ -191,7 +191,7 @@ const std::string& RequestValidator<TFSRequestType, TFSInputTensorType, TFSInput
     return *currentlyValidatedName;
 }
 template <>
-const std::string& RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::getCurrentlyValidatedInputName() const {
+const std::string& RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::getCurrentlyValidatedInputName() const {
     return *currentlyValidatedName;
 }
 
@@ -204,8 +204,8 @@ const TFSInputTensorType& RequestValidator<TFSRequestType, TFSInputTensorType, T
     return it->second;
 }
 template <>
-const InferenceTensor& RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::getInputFromIt( InferenceTensor* const & it) const {
-    return it;
+ const InferenceTensor& RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, const ovms::InferenceTensor *, shape_t>::getInputFromIt(const ovms::InferenceTensor* const& it) const {
+     return *it;
 }
 
 
@@ -226,7 +226,7 @@ Status RequestValidator<TFSRequestType, TFSInputTensorType, TFSInputTensorIterat
     return Status(StatusCode::INVALID_NO_OF_INPUTS, details);
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateNumberOfInputs() const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, const ovms::InferenceTensor*, shape_t>::validateNumberOfInputs() const {
     //:TODO
     std::stringstream ss;
     ss << "Expected: ; Actual: ";
@@ -272,14 +272,18 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return Status(StatusCode::INVALID_MISSING_INPUT, details);
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateAndGetInput(const InferenceRequest& request, const std::string& name, ovms::InferenceTensor*& it, size_t& bufferId) {
-    currentlyValidatedName = const_cast<std::string*>(&name);
-    //currentlyValidatedName = nullptr;
-    std::stringstream ss;
-    ss << "Required input: " << name;
-    const std::string details = ss.str();
-    SPDLOG_DEBUG("[servable name: {} version: {}] Missing input with specific name - {}", servableName, servableVersion, details);
-    return Status(StatusCode::INVALID_MISSING_INPUT, details);
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, const  ovms::InferenceTensor*, shape_t>::validateAndGetInput(const InferenceRequest& request, const std::string& name,const ovms::InferenceTensor*& it, size_t& bufferId) {
+    //request.getInput(name.c_str(), &it);
+    //InferenceRequest& ddd = const_cast<InferenceRequest&>(request);
+    request.getInput(name.c_str(), &it);
+    return StatusCode::OK;
+    // currentlyValidatedName = const_cast<std::string*>(&name);
+    // //currentlyValidatedName = nullptr;
+    // std::stringstream ss;
+    // ss << "Required input: " << name;
+    // const std::string details = ss.str();
+    // SPDLOG_DEBUG("[servable name: {} version: {}] Missing input with specific name - {}", servableName, servableVersion, details);
+    // return Status(StatusCode::INVALID_MISSING_INPUT, details);
 }
 
 template <>
@@ -323,8 +327,8 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return StatusCode::OK;
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateNumberOfBinaryInputShapeDimensions(const InferenceTensor& proto) const {
-    RequestShapeInfo<InferenceTensor, Shape> rsi(proto);
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::validateNumberOfBinaryInputShapeDimensions(const InferenceTensor& proto) const {
+    RequestShapeInfo<InferenceTensor, shape_t> rsi(proto);
     //TODO2
     if (rsi.getShapeSize() != 1) {
         std::stringstream ss;
@@ -406,7 +410,7 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return StatusCode::OK;
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::checkBinaryBatchSizeMismatch(const InferenceTensor& proto, const Dimension& servableBatchSize, Status& finalStatus, Mode batchingMode, Mode shapeMode) const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::checkBinaryBatchSizeMismatch(const InferenceTensor& proto, const Dimension& servableBatchSize, Status& finalStatus, Mode batchingMode, Mode shapeMode) const {
     //TODO2
 
     return StatusCode::OK;
@@ -589,7 +593,7 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return StatusCode::OK;
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateTensorContentSize(const InferenceTensor& proto, ovms::Precision expectedPrecision, size_t bufferId) const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const ovms::InferenceTensor*, shape_t>::validateTensorContentSize(const InferenceTensor& proto, ovms::Precision expectedPrecision, size_t bufferId) const {
     //TODO2
     
     return StatusCode::OK;
@@ -629,7 +633,7 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return StatusCode::OK;
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validateNumberOfShapeDimensions(const ovms::TensorInfo& inputInfo, const InferenceTensor& proto) const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::validateNumberOfShapeDimensions(const ovms::TensorInfo& inputInfo, const InferenceTensor& proto) const {
     //TODO2
     // Network and request must have the same number of shape dimensions, higher than 0
 
@@ -663,7 +667,7 @@ Status RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorT
     return StatusCode::OK;
 }
 template <>
-Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::validatePrecision(const ovms::TensorInfo& inputInfo, const InferenceTensor& proto) const {
+Status RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const  ovms::InferenceTensor*, shape_t>::validatePrecision(const ovms::TensorInfo& inputInfo, const InferenceTensor& proto) const {
     //TODO2
     return StatusCode::OK;
 }
@@ -699,7 +703,7 @@ bool RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorTyp
     return false;
 }
 template <>
-bool RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor, ovms::InferenceTensor*, shape_t>::checkIfBinaryInputUsed(const InferenceTensor& proto, const std::string inputName) const {
+bool RequestValidator<ovms::InferenceRequest, ovms::InferenceTensor,const ovms::InferenceTensor*, shape_t>::checkIfBinaryInputUsed(const InferenceTensor& proto, const std::string inputName) const {
     //TODO:
     return false;
 }
@@ -782,10 +786,10 @@ Status validate(const KFSRequest& request, const tensor_map_t& inputsInfo, const
     return RequestValidator<KFSRequest, KFSTensorInputProto, KFSInputTensorIteratorType, KFSShapeType>(request, inputsInfo, servableName, servableVersion, optionalAllowedInputNames, batchingMode, shapeInfo).validate();
 }
 
-template <>
-Status validate(const InferenceRequest& request, const tensor_map_t& inputsInfo, const std::string& servableName, const model_version_t servableVersion, const std::set<std::string>& optionalAllowedInputNames, const Mode batchingMode, const shapes_info_map_t& shapeInfo) {
-    OVMS_PROFILE_FUNCTION();
-    return RequestValidator<InferenceRequest, InferenceTensor, ovms::InferenceTensor*, shape_t>(request, inputsInfo, servableName, servableVersion, optionalAllowedInputNames, batchingMode, shapeInfo).validate();
-}
+ template <>
+ Status validate(const InferenceRequest& request, const tensor_map_t& inputsInfo, const std::string& servableName, const model_version_t servableVersion, const std::set<std::string>& optionalAllowedInputNames, const Mode batchingMode, const shapes_info_map_t& shapeInfo) {
+     OVMS_PROFILE_FUNCTION();
+     return RequestValidator<InferenceRequest, InferenceTensor, const ovms::InferenceTensor*, shape_t>(request, inputsInfo, servableName, servableVersion, optionalAllowedInputNames, batchingMode, shapeInfo).validate();
+ }
 }  // namespace request_validation_utils
 }  // namespace ovms
