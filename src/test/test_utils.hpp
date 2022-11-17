@@ -35,6 +35,7 @@
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #pragma GCC diagnostic pop
 #include "../execution_context.hpp"
+#include "../inferencerequest.hpp"
 #include "../kfs_frontend/kfs_grpc_inference_service.hpp"
 #include "../metric_registry.hpp"
 #include "../modelmanager.hpp"
@@ -158,7 +159,14 @@ void prepareKFSInferInputTensor(::KFSRequest& request, const std::string& name, 
 void prepareKFSInferInputTensor(::KFSRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const ovms::Precision>& inputInfo,
     const std::vector<float>& data = {}, bool putBufferInInputTensorContent = false);
 
+void prepareCAPIInferInputTensor(ovms::InferenceRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const OVMSDataType>& inputInfo,
+    const std::vector<float>& data = {}, bool putBufferInInputTensorContent = false);
+void prepareCAPIInferInputTensor(ovms::InferenceRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const ovms::Precision>& inputInfo,
+    const std::vector<float>& data = {}, bool putBufferInInputTensorContent = false);
+
 void preparePredictRequest(::KFSRequest& request, inputs_info_t requestInputs, const std::vector<float>& data = {}, bool putBufferInInputTensorContent = false);
+
+void preparePredictRequest(ovms::InferenceRequest& request, inputs_info_t requestInputs, const std::vector<float>& data = {}, bool putBufferInInputTensorContent = false);
 
 void prepareBinaryPredictRequest(tensorflow::serving::PredictRequest& request, const std::string& inputName, const int batchSize);
 void prepareBinaryPredictRequest(::KFSRequest& request, const std::string& inputName, const int batchSize);

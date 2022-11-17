@@ -28,8 +28,8 @@
 #include "../status.hpp"
 
 namespace ovms {
-Precision PrecisionToOvmsPrecision(const DataType& datatype) {
-    static std::unordered_map<DataType, Precision> precisionMap{
+Precision PrecisionToOvmsPrecision(const OVMSDataType& datatype) {
+    static std::unordered_map<OVMSDataType, Precision> precisionMap{
         {OVMS_DATATYPE_BOOL, Precision::BOOL},
         {OVMS_DATATYPE_FP64, Precision::FP64},
         {OVMS_DATATYPE_FP32, Precision::FP32},
@@ -50,8 +50,8 @@ Precision PrecisionToOvmsPrecision(const DataType& datatype) {
     return it->second;
 }
 
-size_t DataTypeSize(const DataType& datatype) {
-    static std::unordered_map<DataType, size_t> datatypeSizeMap{
+size_t DataTypeSize(const OVMSDataType& datatype) {
+    static std::unordered_map<OVMSDataType, size_t> datatypeSizeMap{
         {OVMS_DATATYPE_BOOL, 1},
         {OVMS_DATATYPE_U8, 1},
         {OVMS_DATATYPE_U16, 2},
@@ -73,8 +73,8 @@ size_t DataTypeSize(const DataType& datatype) {
     return it->second;
 }
 
-const DataType& ovmsPrecisionToPrecision(Precision precision) {
-    static std::unordered_map<Precision, DataType> precisionMap{
+const OVMSDataType& ovmsPrecisionToPrecision(Precision precision) {
+    static std::unordered_map<Precision, OVMSDataType> precisionMap{
         {Precision::FP64, OVMS_DATATYPE_FP64},
         {Precision::FP32, OVMS_DATATYPE_FP32},
         {Precision::FP16, OVMS_DATATYPE_FP16},

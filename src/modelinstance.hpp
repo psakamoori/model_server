@@ -41,6 +41,7 @@
 #include "tensorinfo.hpp"
 
 namespace ovms {
+class InferenceRequest;
 class MetricRegistry;
 class ModelInstanceUnloadGuard;
 class PipelineDefinition;

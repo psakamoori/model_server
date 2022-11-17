@@ -17,6 +17,7 @@
 
 #include <functional>
 
+#include "../capi_frontend/capi_utils.hpp"
 #include "../kfs_frontend/kfs_utils.hpp"
 #include "../prediction_service_utils.hpp"
 #include "../tensorinfo.hpp"
@@ -32,6 +33,13 @@ void preparePredictRequest(::KFSRequest& request, inputs_info_t requestInputs, c
     request.mutable_raw_input_contents()->Clear();
     for (auto const& it : requestInputs) {
         prepareKFSInferInputTensor(request, it.first, it.second, data, putBufferInInputTensorContent);
+    }
+}
+
+void preparePredictRequest(ovms::InferenceRequest& request, inputs_info_t requestInputs, const std::vector<float>& data, bool putBufferInInputTensorContent) {
+    request.removeAllInputs();
+    for (auto const& it : requestInputs) {
+        prepareCAPIInferInputTensor(request, it.first, it.second, data, putBufferInInputTensorContent);
     }
 }
 
@@ -372,6 +380,19 @@ void prepareKFSInferInputTensor(::KFSRequest& request, const std::string& name, 
     prepareKFSInferInputTensor(request, name,
         {shape, ovmsPrecisionToKFSPrecision(type)},
         data, putBufferInInputTensorContent);
+}
+
+void prepareCAPIInferInputTensor(ovms::InferenceRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const ovms::Precision>& inputInfo,
+    const std::vector<float>& data, bool putBufferInInputTensorContent) {
+    auto [shape, type] = inputInfo;
+    prepareCAPIInferInputTensor(request, name,
+        {shape, ovmsPrecisionToPrecision(type)},
+        data, putBufferInInputTensorContent);
+}
+
+void prepareCAPIInferInputTensor(ovms::InferenceRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const OVMSDataType>& inputInfo,
+    const std::vector<float>& data, bool putBufferInInputTensorContent) {
+        return;
 }
 
 void prepareKFSInferInputTensor(::KFSRequest& request, const std::string& name, const std::tuple<ovms::shape_t, const std::string>& inputInfo,

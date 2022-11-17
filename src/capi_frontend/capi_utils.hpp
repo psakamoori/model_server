@@ -25,9 +25,9 @@ namespace ovms {
 class Status;
 std::string tensorShapeToString(const Shape& tensorShape);
 
-Precision PrecisionToOvmsPrecision(const DataType& s);
-const DataType& ovmsPrecisionToPrecision(Precision precision);
+Precision PrecisionToOvmsPrecision(const OVMSDataType& s);
+const OVMSDataType& ovmsPrecisionToPrecision(Precision precision);
 
-size_t DataTypeSize(const DataType& datatype);
+size_t DataTypeSize(const OVMSDataType& datatype);
 Status prepareConsolidatedTensorImpl(InferenceResponse* response, char*& tensorOut, const std::string& name, size_t size);
 }  // namespace ovms
