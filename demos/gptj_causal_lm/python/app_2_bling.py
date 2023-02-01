@@ -13,10 +13,12 @@ print(s)
 ids = blingfire.text_to_ids(h, s, 128, no_padding=True)  # sequence length: 128, oov id: 100
 print(ids)                                   # returns a numpy array of length 128 (padded or trimmed)
 
-text = blingfire.ids_to_text(h_i2w, np.array(ids.tolist() + blingfire.text_to_ids(h, "", 128, no_padding=True).tolist()))     # take a numpy array of ids
-print(text)                                  # returns a string
-
-text = blingfire.ids_to_text(h_i2w, ids, skip_special_tokens=False)     # generate text with special tokens included
+print(np.array(
+    [  770,   318,   257,  1332,    13, 12466,   255,   381,   293,  2508,    13,  1374,
+   466,   314,  6931,   616,  7166,  4451,  2657,    30,  5645], dtype=np.uint32))
+text = blingfire.ids_to_text(h_i2w, np.array(
+    [  770,   318,   257,  1332,    13, 12466,   255,   381,   293,  2508,    13,  1374,
+   466,   314,  6931,   616,  7166,  4451,  2657,    30,  5645], dtype=np.uint32), skip_special_tokens=False)     # generate text with special tokens included
 print(text)                                  
 
 
