@@ -49,7 +49,7 @@ client = ovmsclient.make_grpc_client(args['url'])
 input_sentence = args['input']
 #print(input_sentence, end='', flush=True)
 
-# concat_ids_bf = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True).tolist()
+concat_ids_bf = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True).tolist()
 
 iteration = 0
 first_latency = -1
@@ -58,13 +58,16 @@ while True:
     #inputs = tokenizer(input_sentence, return_tensors="np")
     # print(inputs['input_ids'], blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True))
     # inputs['input_ids'] = blingfire.text_to_ids(h, input_sentence, 512, no_padding=True).astype('int64').reshape(1, -1)
-    # concat_ids_bf = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True).tolist()
+    #concat_ids_bf = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True).tolist()
     #print(concat_ids_bf)
     #print(tokenizer(input_sentence, return_tensors="np")['input_ids'][0].tolist())
-    tokens = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True)
+    #tokens = blingfire.text_to_ids(h, input_sentence, 128, 100, no_padding=True)
+    #inputs = dict(
+    #    input_ids=tokens.astype('int64').reshape(1, -1),
+    #    attention_mask=np.ones((1, len(tokens)), dtype='int64'))
     inputs = dict(
-        input_ids=tokens.astype('int64').reshape(1, -1),
-        attention_mask=np.ones((1, len(tokens)), dtype='int64'))
+        input_ids=np.array(concat_ids_bf, dtype='int64').reshape(1, -1),
+        attention_mask=np.ones((1, len(concat_ids_bf)), dtype='int64'))
     start_time = time.time()
     results = client.predict(inputs=dict(inputs), model_name=args['model_name'])
     latency = time.time() - start_time
@@ -75,16 +78,16 @@ while True:
     #word = tokenizer.decode(predicted_token_id)
     #input_sentence += word
     # print(f"Iteration: {iteration}\nLast predicted token: {predicted_token_id}\nLast latency: {last_latency}s\n{input_sentence}")
-    word = blingfire.ids_to_text(h_reverse, np.array([predicted_token_id]), skip_special_tokens=False)
-    #concat_ids_bf.append(predicted_token_id)
+    #word = blingfire.ids_to_text(h_reverse, np.array([predicted_token_id], dtype='uint32'), skip_special_tokens=False)
+    concat_ids_bf.append(predicted_token_id)
     #print(concat_ids_bf)
     #print(np.array(concat_ids_bf).shape)
     #print(f'{word}', end='', flush=True)
-    #input_sentence = blingfire.ids_to_text(h_reverse, np.array(concat_ids_bf), skip_special_tokens=False)
+    input_sentence = blingfire.ids_to_text(h_reverse, np.array(concat_ids_bf, dtype='uint32'), skip_special_tokens=False)
     #if word[0] == '\'' or word[0] == ',' or word[0] == '.' or word[0] == '-' or input_sentence[-1] == '-' or input_sentence[-1] == '\"':
     #    input_sentence += word
     #else:
-    input_sentence += f' {word}'
+    #input_sentence += f'{word}'
     #print(blingfire.ids_to_text(h_reverse, np.array(concat_ids_bf), skip_special_tokens=True))
     iteration += 1
     print(iteration, input_sentence)
