@@ -23,6 +23,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <chrono>
 
 #include "blingfiretokdll.h"
 
@@ -69,11 +70,10 @@ int deinitialize(void* customNodeLibraryInternalManager) {
 }
 
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
+    auto start = std::chrono::steady_clock::now();
     std::cout << "MMM Using tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
     // Parameters reading
-    // std::string modelPath = get_string_parameter("model_path", params, paramsCount, "unknown");
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, -1);
-    // NODE_ASSERT(modelPath != "unknown", "model path is required");
     NODE_ASSERT(maxIdsArrLength > 0, "max ids array length must be larger than 0");
 
     // Inputs reading
@@ -106,10 +106,19 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     int32_t* ids = (int32_t*)malloc(maxIdsArrLength * sizeof(int32_t));
     auto idsCount = manager->tokenize(text, ids, maxIdsArrLength);
 
-    // TODO: Assert for idsCount <= maxIdsArrLength
+    // TODO: Assert for idsCount <= maxIdsArrLength, free previously allocated memory
+
+    // Convert ids to int64_t dynamically allocated array
+    int64_t* ids_i64 = (int64_t*)malloc(idsCount * sizeof(int64_t));
+    int64_t* attention_i64 = (int64_t*)malloc(idsCount * sizeof(int64_t));
+    for (int i = 0; i < idsCount; i++) {
+        ids_i64[i] = static_cast<int64_t>(ids[i]);
+        attention_i64[i] = 1;
+    }
+    free(ids);
 
     // Write output
-    *outputsCount = 1;
+    *outputsCount = 2;
     *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));
     if ((*outputs) == nullptr) {
         std::cerr << "malloc has failed" << std::endl;
@@ -119,14 +128,30 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     CustomNodeTensor& output = (*outputs)[0];
     output.name = "tokens";
-    output.data = reinterpret_cast<uint8_t*>(ids);
-    output.dataBytes = sizeof(int32_t) * idsCount;
+    output.data = reinterpret_cast<uint8_t*>(ids_i64);
+    output.dataBytes = sizeof(int64_t) * idsCount;
     output.dimsCount = 2;
     output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
     NODE_ASSERT(output.dims != nullptr, "malloc has failed");
     output.dims[0] = 1;
     output.dims[1] = idsCount;
-    output.precision = I32;
+    output.precision = I64;
+
+    CustomNodeTensor& attention = (*outputs)[1];
+    attention.name = "attention";
+    attention.data = reinterpret_cast<uint8_t*>(attention_i64);
+    attention.dataBytes = sizeof(int64_t) * idsCount;
+    attention.dimsCount = 2;
+    attention.dims = (uint64_t*)malloc(attention.dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(attention.dims != nullptr, "malloc has failed");
+    attention.dims[0] = 1;
+    attention.dims[1] = idsCount;
+    attention.precision = I64;
+
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "MMM Elapsed time in seconds: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+         << " ms" << std::endl;
 
     return 0;
 }
@@ -146,7 +171,7 @@ int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const stru
 }
 
 int getOutputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
-    *infoCount = 1;
+    *infoCount = 2;
     *info = (struct CustomNodeTensorInfo*)malloc(*infoCount * sizeof(struct CustomNodeTensorInfo));
     NODE_ASSERT((*info) != nullptr, "malloc has failed");
 
@@ -157,50 +182,18 @@ int getOutputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const str
     (*info)[0].dims[0] = -1;
     (*info)[0].dims[0] = -1;
     (*info)[0].precision = I64;
+
+    (*info)[1].name = "attention";
+    (*info)[1].dimsCount = 2;
+    (*info)[1].dims = (uint64_t*)malloc((*info)->dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(((*info)[1].dims) != nullptr, "malloc has failed");
+    (*info)[1].dims[0] = -1;
+    (*info)[1].dims[0] = -1;
+    (*info)[1].precision = I64;
     return 0;
 }
 
 int release(void* ptr, void* customNodeLibraryInternalManager) {
     free(ptr);
-    return 0;
-}
-
-int main() {
-    const std::string model_bin = "/ovms/src/custom_nodes/tokenizer/gpt2.bin";
-    const std::string model_i2w = "/ovms/src/custom_nodes/tokenizer/gpt2.i2w";
-
-    const std::string input_sentence = "Like Curiosity, the Perseverance rover was built by engineers and scientists at NASA's Jet Propulsion Laboratory in Pasadena, California. Roughly 85% of Perseverance's mass is based on Curiosity \"heritage hardware,\" saving NASA time and money and reducing risk considerably, agency officials have said.  Как и Curiosity, марсоход Perseverance был построен инженерами и учеными из Лаборатории реактивного движения НАСА в Пасадене, Калифорния. По словам официальных лиц агентства, примерно 85% массы Perseverance основано на «традиционном оборудовании» Curiosity, что экономит время и деньги NASA и значительно снижает риски.";
-
-    std::cout << "Loading the model..." << std::endl;
-    void* h = BlingFire::LoadModel(model_bin.c_str());
-    void* h_reverse = BlingFire::LoadModel(model_i2w.c_str());
-    std::cout << "Loaded." << std::endl;
-
-    int32_t ids[1024]={0,};
-    int32_t expected_ids[1024] = {770, 318, 257, 1332, 13, 12466, 255, 381, 293, 2508, 13, 1374,
-        466, 314, 6931, 616, 7166, 4451, 2657, 30, 5645};
-    int num_of_ids = BlingFire::TextToIds(h, input_sentence.c_str(), input_sentence.size(), ids, 1024);
-
-    // std::cout << "actual:  ";
-    // for (int i = 0; i < 40; i++) {
-    //     std::cout << ids[i] << " ";
-    // }
-    // std::cout << std::endl << "expected:";
-    // for (int i = 0; i < 40; i++) {
-    //     std::cout << expected_ids[i] << " ";
-    // }
-    // std::cout << std::endl;
-
-    char output_buffer[1024];
-    BlingFire::IdsToText(h_reverse, ids, num_of_ids, output_buffer, 1024, false);
-
-    std::cout << "Num of ids: " << num_of_ids << std::endl;
-    std::cout << "Input: \t\t " << input_sentence << std::endl;
-    std::cout << "Conversion back: " << output_buffer << std::endl;
-
-    std::cout << "Freeing the model..." << std::endl;
-    BlingFire::FreeModel(h_reverse);
-    BlingFire::FreeModel(h);
-    std::cout << "Freed." << std::endl;
     return 0;
 }
