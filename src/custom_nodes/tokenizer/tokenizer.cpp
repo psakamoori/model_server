@@ -28,37 +28,40 @@
 
 int main();
 
-struct TokenizerModel {
+class TokenizerModel {
     void* handle = nullptr;
 
+public:
     TokenizerModel(const std::string& modelPath) {
-        //handle = BlingFire::LoadModel(modelPath.c_str());
+        handle = BlingFire::LoadModel(modelPath.c_str());
         std::cout << "MMM Model loaded." << std::endl;
     }
 
     ~TokenizerModel() {
-        // if (handle) {
-        //     BlingFire::FreeModel(handle);
-        //     std::cout << "MMM Model unloaded." << std::endl;
-        // }
+        if (handle) {
+            BlingFire::FreeModel(handle);
+            std::cout << "MMM Model unloaded." << std::endl;
+        }
+    }
+
+    const int tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength) {
+        std::cout << "MMM Tokenizing: [" << text << "]" << std::endl;
+        return BlingFire::TextToIds(this->handle, text.c_str(), text.size(), ids, maxIdsArrLength);
     }
 };
 
 int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeParam* params, int paramsCount) {
-    std::cout << "MMM Initializing tokenizer" << std::endl;
     std::string modelPath = get_string_parameter("model_path", params, paramsCount, "");
     NODE_ASSERT(!modelPath.empty(), "model_path cannot be empty");
-    std::cout << "MMM Model Path: " << modelPath << std::endl;
     auto* manager = new TokenizerModel(modelPath);
     *customNodeLibraryInternalManager = manager;
-    std::cout << "MMM Init " << (uint64_t)*customNodeLibraryInternalManager << std::endl;
+    std::cout << "MMM Initializing tokenizer with path " << modelPath << ", "  << (uint64_t)*customNodeLibraryInternalManager % 511 << std::endl;
     return 0;
 }
 
 int deinitialize(void* customNodeLibraryInternalManager) {
-    std::cout << "MMM Deinitializing tokenizer" << std::endl;
     if (customNodeLibraryInternalManager != nullptr) {
-        std::cout << "MMM DeInit " << (uint64_t)customNodeLibraryInternalManager << std::endl;
+        std::cout << "MMM Deinitializing tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
         TokenizerModel* manager = static_cast<TokenizerModel*>(customNodeLibraryInternalManager);
         delete manager;
     }
@@ -66,6 +69,7 @@ int deinitialize(void* customNodeLibraryInternalManager) {
 }
 
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
+    std::cout << "MMM Using tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
     // Parameters reading
     // std::string modelPath = get_string_parameter("model_path", params, paramsCount, "unknown");
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, -1);
@@ -100,8 +104,31 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     TokenizerModel* manager = static_cast<TokenizerModel*>(customNodeLibraryInternalManager);
     
     int32_t* ids = (int32_t*)malloc(maxIdsArrLength * sizeof(int32_t));
+    auto idsCount = manager->tokenize(text, ids, maxIdsArrLength);
 
-    return 1;
+    // TODO: Assert for idsCount <= maxIdsArrLength
+
+    // Write output
+    *outputsCount = 1;
+    *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));
+    if ((*outputs) == nullptr) {
+        std::cerr << "malloc has failed" << std::endl;
+        free(ids);
+        return 1;
+    }
+
+    CustomNodeTensor& output = (*outputs)[0];
+    output.name = "tokens";
+    output.data = reinterpret_cast<uint8_t*>(ids);
+    output.dataBytes = sizeof(int32_t) * idsCount;
+    output.dimsCount = 2;
+    output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(output.dims != nullptr, "malloc has failed");
+    output.dims[0] = 1;
+    output.dims[1] = idsCount;
+    output.precision = I32;
+
+    return 0;
 }
 
 int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
