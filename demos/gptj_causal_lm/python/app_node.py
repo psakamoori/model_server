@@ -21,6 +21,9 @@ import argparse
 import numpy as np
 from transformers import AutoTokenizer
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
 parser = argparse.ArgumentParser(description='Demo for GPT-J causal LM requests using ovmsclient gRPC API')
 
 parser.add_argument('--input', required=True, help='Beginning of a sentence', type=str)
