@@ -12,10 +12,9 @@ ExternalProject_Add(blingfire
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${BLINGFIRE_INSTALL_DIR}
 )
 
-# TODO: wait for tokenizer.cpp building before blingfire is compiled with nproc>1
-
 add_library(tokenizer SHARED tokenizer.cpp)
 target_include_directories(tokenizer PRIVATE ${BLINGFIRE_INSTALL_DIR}/include)
 target_link_libraries(tokenizer
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libbingfirtinydll_static.a
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
+add_dependencies(tokenizer blingfire)
