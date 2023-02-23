@@ -92,8 +92,9 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     NODE_ASSERT(textTensor != nullptr, "Missing text input");
     NODE_ASSERT(textTensor->precision == U8, "text input is not U8");
 
-    NODE_ASSERT(textTensor->dimsCount == 1, "input text shape must have 1 dimension");
-    NODE_ASSERT(textTensor->dims[0] > 0, "input text dimension must be larger than 0");
+    NODE_ASSERT(textTensor->dimsCount == 2, "input text shape must have 2 dimensions");
+    NODE_ASSERT(textTensor->dims[0] == 1, "input text dimension 1 must be batch 1 for now");
+    NODE_ASSERT(textTensor->dims[1] > 0, "input text dimension 2 must be larger than 0");
 
     std::cout << "maxIdsArrLength: [" << maxIdsArrLength << "]" << std::endl;
 
@@ -162,10 +163,11 @@ int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const stru
     NODE_ASSERT((*info) != nullptr, "malloc has failed");
 
     (*info)[0].name = "text";
-    (*info)[0].dimsCount = 1;
+    (*info)[0].dimsCount = 2;
     (*info)[0].dims = (uint64_t*)malloc((*info)[0].dimsCount * sizeof(uint64_t));
     NODE_ASSERT(((*info)[0].dims) != nullptr, "malloc has failed");
     (*info)[0].dims[0] = -1;
+    (*info)[0].dims[1] = -1;
     (*info)[0].precision = U8;
     return 0;
 }
