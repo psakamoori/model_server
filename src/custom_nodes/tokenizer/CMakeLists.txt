@@ -12,9 +12,21 @@ ExternalProject_Add(blingfire
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${BLINGFIRE_INSTALL_DIR}
 )
 
+# Download and install Google Test
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        release-1.11.0
+)
+FetchContent_MakeAvailable(googletest)
+
 add_library(tokenizer SHARED tokenizer.cpp)
 target_include_directories(tokenizer PRIVATE ${BLINGFIRE_INSTALL_DIR}/include)
 target_link_libraries(tokenizer
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libbingfirtinydll_static.a
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
 add_dependencies(tokenizer blingfire)
+
+add_executable(tests tests.cpp)
+target_link_libraries(tests gtest_main tokenizer)

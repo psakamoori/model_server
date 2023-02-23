@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //*****************************************************************************
+#include "tokenizer.hpp"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,43 +28,48 @@
 
 #include "blingfiretokdll.h"
 
-int main();
+namespace custom_nodes {
+namespace tokenizer {
 
-class TokenizerModel {
-    void* handle = nullptr;
+Model::Model(const std::string& modelPath) {
+    handle = BlingFire::LoadModel(modelPath.c_str());
+    std::cout << "MMM Model loaded." << std::endl;
+}
 
-public:
-    TokenizerModel(const std::string& modelPath) {
-        handle = BlingFire::LoadModel(modelPath.c_str());
-        std::cout << "MMM Model loaded." << std::endl;
+Model::~Model() {
+    if (handle) {
+        BlingFire::FreeModel(handle);
+        std::cout << "MMM Model unloaded." << std::endl;
     }
+}
 
-    ~TokenizerModel() {
-        if (handle) {
-            BlingFire::FreeModel(handle);
-            std::cout << "MMM Model unloaded." << std::endl;
-        }
-    }
+const int Model::tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength) {
+    std::cout << "MMM Tokenizing: [" << text << "]" << std::endl;
+    return BlingFire::TextToIds(handle, text.c_str(), text.size(), ids, maxIdsArrLength);
+}
 
-    const int tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength) {
-        std::cout << "MMM Tokenizing: [" << text << "]" << std::endl;
-        return BlingFire::TextToIds(this->handle, text.c_str(), text.size(), ids, maxIdsArrLength);
-    }
-};
+}  // namespace tokenizer
+}  // namespace custom_nodes
+
+using namespace custom_nodes::tokenizer;
 
 int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeParam* params, int paramsCount) {
     std::string modelPath = get_string_parameter("model_path", params, paramsCount, "");
     NODE_ASSERT(!modelPath.empty(), "model_path cannot be empty");
-    auto* manager = new TokenizerModel(modelPath);
-    *customNodeLibraryInternalManager = manager;
-    std::cout << "MMM Initializing tokenizer with path " << modelPath << ", "  << (uint64_t)*customNodeLibraryInternalManager % 511 << std::endl;
+    try {
+        *customNodeLibraryInternalManager = new Model(modelPath);
+        std::cout << "[tokenizer] Successful model loading from path: " << modelPath << std::endl;
+    } catch (...) {
+        std::cerr << "[tokenizer] Failed to load tokenization model from path: " << modelPath << std::endl;
+        return 1;
+    }
     return 0;
 }
 
 int deinitialize(void* customNodeLibraryInternalManager) {
     if (customNodeLibraryInternalManager != nullptr) {
         std::cout << "MMM Deinitializing tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
-        TokenizerModel* manager = static_cast<TokenizerModel*>(customNodeLibraryInternalManager);
+        Model* manager = static_cast<Model*>(customNodeLibraryInternalManager);
         delete manager;
     }
     return 0;
@@ -80,7 +86,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     const CustomNodeTensor* textTensor = nullptr;
 
     for (int i = 0; i < inputsCount; i++) {
-        if (std::strcmp(inputs[i].name, "text") == 0) {
+        if (std::strcmp(inputs[i].name, "texts") == 0) {
             textTensor = &(inputs[i]);
         } else {
             std::cout << "Unrecognized input: " << inputs[i].name << std::endl;
@@ -102,7 +108,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     std::string text((const char*)textTensor->data, textTensor->dataBytes);
     std::cout << "Received input: [" << text << "]" << std::endl;
 
-    TokenizerModel* manager = static_cast<TokenizerModel*>(customNodeLibraryInternalManager);
+    Model* manager = static_cast<Model*>(customNodeLibraryInternalManager);
     
     int32_t* ids = (int32_t*)malloc(maxIdsArrLength * sizeof(int32_t));
     auto idsCount = manager->tokenize(text, ids, maxIdsArrLength);
@@ -162,7 +168,7 @@ int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const stru
     *info = (struct CustomNodeTensorInfo*)malloc(*infoCount * sizeof(struct CustomNodeTensorInfo));
     NODE_ASSERT((*info) != nullptr, "malloc has failed");
 
-    (*info)[0].name = "text";
+    (*info)[0].name = "texts";
     (*info)[0].dimsCount = 2;
     (*info)[0].dims = (uint64_t*)malloc((*info)[0].dimsCount * sizeof(uint64_t));
     NODE_ASSERT(((*info)[0].dims) != nullptr, "malloc has failed");
@@ -182,7 +188,7 @@ int getOutputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const str
     (*info)[0].dims = (uint64_t*)malloc((*info)->dimsCount * sizeof(uint64_t));
     NODE_ASSERT(((*info)[0].dims) != nullptr, "malloc has failed");
     (*info)[0].dims[0] = -1;
-    (*info)[0].dims[0] = -1;
+    (*info)[0].dims[1] = -1;
     (*info)[0].precision = I64;
 
     (*info)[1].name = "attention";
@@ -190,7 +196,7 @@ int getOutputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const str
     (*info)[1].dims = (uint64_t*)malloc((*info)->dimsCount * sizeof(uint64_t));
     NODE_ASSERT(((*info)[1].dims) != nullptr, "malloc has failed");
     (*info)[1].dims[0] = -1;
-    (*info)[1].dims[0] = -1;
+    (*info)[1].dims[1] = -1;
     (*info)[1].precision = I64;
     return 0;
 }
