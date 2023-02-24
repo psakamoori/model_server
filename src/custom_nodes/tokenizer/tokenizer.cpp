@@ -149,22 +149,22 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     CustomNodeTensor& attention = (*outputs)[1];
     attention.name = "attention";
-    output.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
-    output.data = (uint8_t*)malloc(output.dataBytes);
-    output.dimsCount = 2;
-    output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
-    NODE_ASSERT(output.dims != nullptr, "malloc has failed");
-    output.dims[0] = ids.size();
-    output.dims[1] = maxTokenSize;
-    output.precision = I64;
+    attention.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
+    attention.data = (uint8_t*)malloc(attention.dataBytes);
+    attention.dimsCount = 2;
+    attention.dims = (uint64_t*)malloc(attention.dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(attention.dims != nullptr, "malloc has failed");
+    attention.dims[0] = ids.size();
+    attention.dims[1] = maxTokenSize;
+    attention.precision = I64;
 
     for (size_t i = 0; i < ids.size(); i++) {
-        std::memcpy((*outputs)[0].data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
+        std::memcpy(output.data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
         for (size_t j = 0; j < ids[i].size(); j++) {
-            ((int64_t*)(*outputs)[1].data)[i * maxTokenSize + j] = 1;
+            ((int64_t*)attention.data)[i * maxTokenSize + j] = 1;
         }
         for (size_t j = ids[i].size(); j < maxTokenSize; j++) {
-            ((int64_t*)(*outputs)[1].data)[i * maxTokenSize + j] = 0;
+            ((int64_t*)attention.data)[i * maxTokenSize + j] = 0;
         }
     }
 

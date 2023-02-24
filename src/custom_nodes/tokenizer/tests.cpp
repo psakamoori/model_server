@@ -126,18 +126,19 @@ protected:
         result.resize(outputs->dims[0]);
         for (int i = 0; i < outputsCount; i++) {
             if (std::strcmp(outputs[i].name, "attention") == 0) {
-                // in: [2, 80]; out: [2, 144]
-                for (int i = 0; i < outputs[i].dims[0]; i++) {
-                    result[i].attention = std::vector<int64_t>(
-                        (int64_t*)outputs[i].data,
-                        (int64_t*)outputs[i].data + (outputs[i].dataBytes / sizeof(int64_t)));
+                for (int j = 0; j < outputs[i].dims[0]; j++) {
+                    result[j].attention = std::vector<int64_t>(
+                        (int64_t*)outputs[i].data + j * outputs[i].dims[1],
+                        (int64_t*)outputs[i].data + j * outputs[i].dims[1] + outputs[i].dims[1]);
                 }
-            } else if (std::strcmp(outputs[i].name, "tokens") != 0) {
-                for (int i = 0; i < outputs[i].dims[0]; i++) {
-                    result[i].tokens = std::vector<int64_t>(
-                        (int64_t*)outputs[i].data,
-                        (int64_t*)outputs[i].data + (outputs[i].dataBytes / sizeof(int64_t)));
+            } else if (std::strcmp(outputs[i].name, "tokens") == 0) {
+                for (int j = 0; j < outputs[i].dims[0]; j++) {
+                    result[j].tokens = std::vector<int64_t>(
+                        (int64_t*)outputs[i].data + j * outputs[i].dims[1],
+                        (int64_t*)outputs[i].data + j * outputs[i].dims[1] + outputs[i].dims[1]);
                 }
+            } else {
+                FAIL() << "Unknown output name: " << outputs[i].name;
             }
         }
         out = result;
@@ -165,13 +166,15 @@ TEST_F(TokenizerFixtureTest, execute) {
     run({"", "Hello world!", "こんにちは"}, outputs);
     ASSERT_EQ(outputs.size(), 3);
 
-    /*
-        // Empty strings
-        // Normal texts
-        // Japanese
-    */
+    // ""
+    // ASSERT_EQ(std::memcmp(outputs[0].tokens.data(), std::vector<int64_t>{0}.data(), 3 * sizeof(int64_t)), 0);
+    ASSERT_EQ(std::memcmp(outputs[0].attention.data(), std::vector<int64_t>{0, 0, 0, 0, 0, 0, 0}.data(), 7 * sizeof(int64_t)), 0);
 
-   /*
-    // Negative params?
-   */
+    // "Hello world!"
+    ASSERT_EQ(std::memcmp(outputs[1].tokens.data(), std::vector<int64_t>{18435, 995, 0}.data(), 3 * sizeof(int64_t)), 0);
+    ASSERT_EQ(std::memcmp(outputs[1].attention.data(), std::vector<int64_t>{1, 1, 1, 0, 0, 0, 0}.data(), 7 * sizeof(int64_t)), 0);
+    
+    // "こんにちは"
+    ASSERT_EQ(std::memcmp(outputs[2].tokens.data(), std::vector<int64_t>{23294, 241, 22174, 28618, 2515, 94, 31676}.data(), 7 * sizeof(int64_t)), 0);
+    ASSERT_EQ(std::memcmp(outputs[2].attention.data(), std::vector<int64_t>{1, 1, 1, 1, 1, 1, 1}.data(), 7 * sizeof(int64_t)), 0);
 }
