@@ -81,7 +81,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     std::cout << "MMM Using tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
     // Parameters reading
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, -1);
-    NODE_ASSERT(maxIdsArrLength > 0, "max ids array length must be larger than 0");
+    NODE_ASSERT(maxIdsArrLength > 0, "max_ids_arr_length param must be larger than 0");
 
     // Inputs reading
     const CustomNodeTensor* textTensor = nullptr;
@@ -90,7 +90,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         if (std::strcmp(inputs[i].name, "texts") == 0) {
             textTensor = &(inputs[i]);
         } else {
-            std::cout << "Unrecognized input: " << inputs[i].name << std::endl;
+            std::cerr << "Unrecognized input: " << inputs[i].name << std::endl;
             return 1;
         }
     }
