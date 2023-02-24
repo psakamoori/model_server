@@ -26,6 +26,9 @@
 #include <cstring>
 #include <chrono>
 #include <atomic>
+#include <memory>
+#include <algorithm>
+#include <numeric>
 
 #include "blingfiretokdll.h"
 
@@ -49,6 +52,15 @@ Model::~Model() {
 const int Model::tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength) {
     std::cout << "[tokenizer] [" << id << "] Tokenizing: [" << text << "]" << std::endl;
     return BlingFire::TextToIds(handle, text.c_str(), text.size(), ids, maxIdsArrLength);
+}
+
+std::vector<int64_t> Model::tokenizeEx(const std::string& text, int maxIdsArrLength) {
+    auto ids = std::make_unique<int32_t[]>(maxIdsArrLength);
+    const int idsLength = tokenize(text, ids.get(), maxIdsArrLength);
+    std::vector<int64_t> vec(idsLength);
+    std::transform(ids.get(), ids.get() + idsLength, vec.begin(),
+        [](int32_t val) { return static_cast<int64_t>(val); });
+    return std::move(vec);
 }
 
 }  // namespace tokenizer
@@ -78,7 +90,6 @@ int deinitialize(void* customNodeLibraryInternalManager) {
 
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
     auto start = std::chrono::steady_clock::now();
-    std::cout << "MMM Using tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
     // Parameters reading
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, -1);
     NODE_ASSERT(maxIdsArrLength > 0, "max_ids_arr_length param must be larger than 0");
@@ -100,64 +111,65 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     NODE_ASSERT(textTensor->precision == U8, "text input is not U8");
 
     NODE_ASSERT(textTensor->dimsCount == 2, "input text shape must have 2 dimensions");
-    NODE_ASSERT(textTensor->dims[0] == 1, "input text dimension 1 must be batch 1 for now");
-    NODE_ASSERT(textTensor->dims[1] > 0, "input text dimension 2 must be larger than 0");
+    NODE_ASSERT(textTensor->dims[0] > 0, "input text dimension 1 must be larger than 0 (number of texts)");
+    NODE_ASSERT(textTensor->dims[1] > 0, "input text dimension 2 must be larger than 0 (max null terminated text length)");
 
-    std::cout << "maxIdsArrLength: [" << maxIdsArrLength << "]" << std::endl;
+    Model* model = static_cast<Model*>(customNodeLibraryInternalManager);
 
-    // Convert textTensor to std::string
-    std::string text((const char*)textTensor->data, textTensor->dataBytes);
-    std::cout << "Received input: [" << text << "]" << std::endl;
-
-    Model* manager = static_cast<Model*>(customNodeLibraryInternalManager);
-    
-    int32_t* ids = (int32_t*)malloc(maxIdsArrLength * sizeof(int32_t));
-    auto idsCount = manager->tokenize(text, ids, maxIdsArrLength);
-
-    // TODO: Assert for idsCount <= maxIdsArrLength, free previously allocated memory
-
-    // Convert ids to int64_t dynamically allocated array
-    int64_t* ids_i64 = (int64_t*)malloc(idsCount * sizeof(int64_t));
-    int64_t* attention_i64 = (int64_t*)malloc(idsCount * sizeof(int64_t));
-    for (int i = 0; i < idsCount; i++) {
-        ids_i64[i] = static_cast<int64_t>(ids[i]);
-        attention_i64[i] = 1;
-    }
-    free(ids);
-
-    // Write output
     *outputsCount = 2;
     *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));
     if ((*outputs) == nullptr) {
         std::cerr << "malloc has failed" << std::endl;
-        free(ids);
         return 1;
+    }
+
+    std::vector<std::vector<int64_t>> ids(textTensor->dims[0]);
+    // For each batch, sequentially
+    for (uint64_t i = 0; i < textTensor->dims[0]; i++) {
+        const char* strStart = (const char*)textTensor->data + i * textTensor->dims[1];
+        std::string text(strStart, std::strlen(strStart));  // We are ensure this is 0 terminated by the server
+        ids[i] = model->tokenizeEx(text, maxIdsArrLength);
+    }
+
+    size_t maxTokenSize = 0;
+    for (const auto& id : ids) {
+        maxTokenSize = std::max(maxTokenSize, id.size());
     }
 
     CustomNodeTensor& output = (*outputs)[0];
     output.name = "tokens";
-    output.data = reinterpret_cast<uint8_t*>(ids_i64);
-    output.dataBytes = sizeof(int64_t) * idsCount;
+    output.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
+    output.data = (uint8_t*)malloc(output.dataBytes);
     output.dimsCount = 2;
     output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
     NODE_ASSERT(output.dims != nullptr, "malloc has failed");
-    output.dims[0] = 1;
-    output.dims[1] = idsCount;
+    output.dims[0] = ids.size();
+    output.dims[1] = maxTokenSize;
     output.precision = I64;
 
     CustomNodeTensor& attention = (*outputs)[1];
     attention.name = "attention";
-    attention.data = reinterpret_cast<uint8_t*>(attention_i64);
-    attention.dataBytes = sizeof(int64_t) * idsCount;
-    attention.dimsCount = 2;
-    attention.dims = (uint64_t*)malloc(attention.dimsCount * sizeof(uint64_t));
-    NODE_ASSERT(attention.dims != nullptr, "malloc has failed");
-    attention.dims[0] = 1;
-    attention.dims[1] = idsCount;
-    attention.precision = I64;
+    output.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
+    output.data = (uint8_t*)malloc(output.dataBytes);
+    output.dimsCount = 2;
+    output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(output.dims != nullptr, "malloc has failed");
+    output.dims[0] = ids.size();
+    output.dims[1] = maxTokenSize;
+    output.precision = I64;
+
+    for (size_t i = 0; i < ids.size(); i++) {
+        std::memcpy((*outputs)[0].data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
+        for (size_t j = 0; j < ids[i].size(); j++) {
+            ((int64_t*)(*outputs)[1].data)[i * maxTokenSize + j] = 1;
+        }
+        for (size_t j = ids[i].size(); j < maxTokenSize; j++) {
+            ((int64_t*)(*outputs)[1].data)[i * maxTokenSize + j] = 0;
+        }
+    }
 
     auto end = std::chrono::steady_clock::now();
-    std::cout << "MMM Elapsed time in seconds: "
+    std::cout << "[tokenizer] Elapsed time in seconds: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
          << " ms" << std::endl;
 

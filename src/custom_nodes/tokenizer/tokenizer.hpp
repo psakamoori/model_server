@@ -1,5 +1,6 @@
 #include <string>
 #include <cstdint>
+#include <vector>
 
 #include "../../custom_node_interface.h"
 
@@ -15,6 +16,7 @@ public:
     ~Model();
 
     const int tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength);
+    std::vector<int64_t> tokenizeEx(const std::string& text, int maxIdsArrLength);
 };
 
 }  // namespace tokenizer
