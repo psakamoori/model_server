@@ -7,6 +7,7 @@ namespace custom_nodes {
 namespace tokenizer {
 
 class Model {
+    int id;
     void* handle = nullptr;
 
 public:

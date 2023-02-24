@@ -67,14 +67,13 @@ TEST(TokenizerTest, outputs_info) {
     ASSERT_EQ(info[0].dims[0], -1);
     ASSERT_EQ(info[0].dims[1], -1);
     ASSERT_EQ(info[0].precision, I64);
-    ret = release(info, (void*)&model);
-    ASSERT_EQ(ret, 0);
 
     ASSERT_EQ(std::strcmp(info[1].name, "attention"), 0);
     ASSERT_EQ(info[1].dimsCount, 2);
     ASSERT_EQ(info[1].dims[0], -1);
     ASSERT_EQ(info[1].dims[1], -1);
     ASSERT_EQ(info[1].precision, I64);
+
     ret = release(info, (void*)&model);
     ASSERT_EQ(ret, 0);
 }

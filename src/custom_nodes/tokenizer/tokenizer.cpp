@@ -25,26 +25,29 @@
 #include <string>
 #include <cstring>
 #include <chrono>
+#include <atomic>
 
 #include "blingfiretokdll.h"
 
 namespace custom_nodes {
 namespace tokenizer {
 
-Model::Model(const std::string& modelPath) {
+std::atomic<int> maxId{0};
+
+Model::Model(const std::string& modelPath) : id(maxId++) {
     handle = BlingFire::LoadModel(modelPath.c_str());
-    std::cout << "MMM Model loaded." << std::endl;
+    std::cout << "[tokenizer] [" << id << "] Model loaded." << std::endl;
 }
 
 Model::~Model() {
     if (handle) {
         BlingFire::FreeModel(handle);
-        std::cout << "MMM Model unloaded." << std::endl;
+        std::cout << "[tokenizer] [" << id << "] Model unloaded." << std::endl;
     }
 }
 
 const int Model::tokenize(const std::string& text, int32_t* ids, int maxIdsArrLength) {
-    std::cout << "MMM Tokenizing: [" << text << "]" << std::endl;
+    std::cout << "[tokenizer] [" << id << "] Tokenizing: [" << text << "]" << std::endl;
     return BlingFire::TextToIds(handle, text.c_str(), text.size(), ids, maxIdsArrLength);
 }
 
@@ -58,9 +61,8 @@ int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeP
     NODE_ASSERT(!modelPath.empty(), "model_path cannot be empty");
     try {
         *customNodeLibraryInternalManager = new Model(modelPath);
-        std::cout << "[tokenizer] Successful model loading from path: " << modelPath << std::endl;
     } catch (...) {
-        std::cerr << "[tokenizer] Failed to load tokenization model from path: " << modelPath << std::endl;
+        std::cerr << "[tokenizer] initialize() fail: Cannot load tokenization model from path: " << modelPath << std::endl;
         return 1;
     }
     return 0;
@@ -68,7 +70,6 @@ int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeP
 
 int deinitialize(void* customNodeLibraryInternalManager) {
     if (customNodeLibraryInternalManager != nullptr) {
-        std::cout << "MMM Deinitializing tokenizer: " << (uint64_t)customNodeLibraryInternalManager % 511 << std::endl;
         Model* manager = static_cast<Model*>(customNodeLibraryInternalManager);
         delete manager;
     }
