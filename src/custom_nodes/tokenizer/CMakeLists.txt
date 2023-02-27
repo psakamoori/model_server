@@ -28,5 +28,15 @@ target_link_libraries(tokenizer
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
 add_dependencies(tokenizer blingfire)
 
+add_library(detokenizer SHARED detokenizer.cpp)
+target_include_directories(detokenizer PRIVATE ${BLINGFIRE_INSTALL_DIR}/include)
+target_link_libraries(detokenizer
+    ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libbingfirtinydll_static.a
+    ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
+add_dependencies(detokenizer blingfire)
+
 add_executable(tests tests.cpp)
 target_link_libraries(tests gtest_main tokenizer)
+
+add_executable(detokenization_tests detokenization_tests.cpp)
+target_link_libraries(detokenization_tests gtest_main detokenizer)
