@@ -90,27 +90,27 @@ int deinitialize(void* customNodeLibraryInternalManager) {
     return 0;
 }
 
-void softmax(float* input, size_t size) {
-	int i;
-	float m, sum, constant;
+// void softmax(float* input, size_t size) {
+// 	int i;
+// 	float m, sum, constant;
 
-	m = -INFINITY;
-	for (i = 0; i < size; ++i) {
-		if (m < input[i]) {
-			m = input[i];
-		}
-	}
+// 	m = -INFINITY;
+// 	for (i = 0; i < size; ++i) {
+// 		if (m < input[i]) {
+// 			m = input[i];
+// 		}
+// 	}
 
-	sum = 0.0;
-	for (i = 0; i < size; ++i) {
-		sum += exp(input[i] - m);
-	}
+// 	sum = 0.0;
+// 	for (i = 0; i < size; ++i) {
+// 		sum += exp(input[i] - m);
+// 	}
 
-	constant = m + log(sum);
-	for (i = 0; i < size; ++i) {
-		input[i] = exp(input[i] - constant);
-	}
-}
+// 	constant = m + log(sum);
+// 	for (i = 0; i < size; ++i) {
+// 		input[i] = exp(input[i] - constant);
+// 	}
+// }
 
 // in:  [-1, -1, 50400]
 // out: [Batch, MaxLength]
@@ -148,20 +148,22 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
         std::cout << "[detokenizer] slicing batch " << batch << std::endl;
         // slice
-        //float* logits = reinterpret_cast<float*>(logitsTensor->data + batch * (logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float));
         float* logits = reinterpret_cast<float*>(
-            logitsTensor->data + batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) + ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));
-        auto logitsCopied = std::make_unique<float>(logitsTensor->dims[2]);
-        std::memcpy(logitsCopied.get(), logits, logitsTensor->dims[2] * sizeof(float));
+            logitsTensor->data + 
+                batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
+                ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
+        // auto logitsCopied = std::make_unique<float[]>(logitsTensor->dims[2]);  // No need to make copy if we do not softmax
+        // std::memcpy(logitsCopied.get(), logits, logitsTensor->dims[2] * sizeof(float));
 
         // softmax
-        std::cout << "[detokenizer] softmax batch " << batch << std::endl;
-        softmax(logitsCopied.get(), logitsTensor->dims[2]);
+        // std::cout << "[detokenizer] softmax batch " << batch << std::endl;
+        // softmax(logitsCopied.get(), logitsTensor->dims[2]);
 
         // argmax
         std::cout << "[detokenizer] argmax batch " << batch << std::endl;
-        float* result = std::max_element(logitsCopied.get(), logitsCopied.get() + logitsTensor->dims[2]);
-        int32_t token = std::distance(logitsCopied.get(), result);
+        // float* result = std::max_element(logitsCopied.get(), logitsCopied.get() + logitsTensor->dims[2]);
+        float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
+        int32_t token = std::distance(logits, result);
 
         // detokenize
         std::cout << "[detokenizer] (token " << token << ") detokenize batch " << batch << std::endl;
