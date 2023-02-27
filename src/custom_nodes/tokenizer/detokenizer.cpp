@@ -58,9 +58,9 @@ std::string Model::detokenizeEx(const std::vector<int64_t>& tokens, int maxOutUt
     auto ids = std::make_unique<int32_t[]>(tokens.size());
     std::transform(tokens.begin(), tokens.end(), ids.get(),
         [](int64_t val) { return static_cast<int32_t>(val); });
-    std::string str(maxOutUtf8StrByteCount, '\0');
+    std::string str(maxOutUtf8StrByteCount + 1, '\0'); // +1 due to null ending
     const int strLength = detokenize(ids.get(), tokens.size(), &str[0], maxOutUtf8StrByteCount, false);
-    str.resize(strLength -1);
+    str.resize(strLength -1);  // remove null terminator
     return std::move(str);
 }
 
@@ -89,8 +89,53 @@ int deinitialize(void* customNodeLibraryInternalManager) {
     return 0;
 }
 
+
+// in:  [-1, -1, 50400]
+// out: [Batch, MaxLength]
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
-    // not implemented
+    auto start = std::chrono::steady_clock::now();
+    // Parameters reading
+    int maxBufferLength = get_int_parameter("max_buffer_length", params, paramsCount, -1);
+    NODE_ASSERT(maxBufferLength > 0, "max_buffer_length param must be larger than 0");
+    
+    // Inputs reading
+    const CustomNodeTensor* logitsTensor = nullptr;
+
+    for (int i = 0; i < inputsCount; i++) {
+        if (std::strcmp(inputs[i].name, "logits") == 0) {
+            logitsTensor = &(inputs[i]);
+        } else {
+            std::cerr << "Unrecognized input: " << inputs[i].name << std::endl;
+            return 1;
+        }
+    }
+
+    // Validating inputs
+    NODE_ASSERT(logitsTensor != nullptr, "Missing logits input");
+    NODE_ASSERT(logitsTensor->precision == FP32, "logits input is not FP32");
+
+    NODE_ASSERT(logitsTensor->dimsCount == 3, "input logits shape must have 3 dimensions");
+    NODE_ASSERT(logitsTensor->dims[0] > 0, "input text dimension 1 must be larger than 0");
+    NODE_ASSERT(logitsTensor->dims[1] > 0, "input text dimension 2 must be larger than 0");
+    NODE_ASSERT(logitsTensor->dims[2] > 0, "input text dimension 3 must be larger than 0");
+
+
+    for (uint64_t batch = 0; batch < logitsTensor->dims[0]; i++) {
+        // slice
+        
+        // softmax
+
+        // argmax
+
+        // detokenize
+    }
+
+    // Write output
+
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "[detokenizer] Elapsed time in seconds: "
+         << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+         << " ms" << std::endl;
     return 1;
 }
 
@@ -106,7 +151,7 @@ int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const stru
     (*info)[0].dims[0] = -1;
     (*info)[0].dims[1] = -1;
     (*info)[0].dims[2] = -1;
-    (*info)[0].precision = U8;
+    (*info)[0].precision = FP32;
     return 0;
 }
 
