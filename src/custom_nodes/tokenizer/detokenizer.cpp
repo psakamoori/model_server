@@ -123,10 +123,16 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     
     // Inputs reading
     const CustomNodeTensor* logitsTensor = nullptr;
+    const CustomNodeTensor* inputIdsTensor = nullptr;
+    const CustomNodeTensor* attentionMaskTensor = nullptr;
 
     for (int i = 0; i < inputsCount; i++) {
         if (std::strcmp(inputs[i].name, "logits") == 0) {
             logitsTensor = &(inputs[i]);
+        } else if (std::strcmp(inputs[i].name, "input_ids") == 0) {
+            inputIdsTensor = &(inputs[i]);
+        } else if (std::strcmp(inputs[i].name, "attention_mask") == 0) {
+            attentionMaskTensor = &(inputs[i]);
         } else {
             std::cerr << "Unrecognized input: " << inputs[i].name << std::endl;
             return 1;
@@ -136,11 +142,25 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     // Validating inputs
     NODE_ASSERT(logitsTensor != nullptr, "Missing logits input");
     NODE_ASSERT(logitsTensor->precision == FP32, "logits input is not FP32");
-
     NODE_ASSERT(logitsTensor->dimsCount == 3, "input logits shape must have 3 dimensions");
     NODE_ASSERT(logitsTensor->dims[0] > 0, "input text dimension 1 must be larger than 0");
     NODE_ASSERT(logitsTensor->dims[1] > 0, "input text dimension 2 must be larger than 0");
     NODE_ASSERT(logitsTensor->dims[2] > 0, "input text dimension 3 must be larger than 0");
+
+    NODE_ASSERT(inputIdsTensor != nullptr, "Missing input_ids input");
+    NODE_ASSERT(inputIdsTensor->precision == I64, "input_ids input is not I64");
+    NODE_ASSERT(inputIdsTensor->dimsCount == 2, "input_ids shape must have 2 dimensions");
+    NODE_ASSERT(inputIdsTensor->dims[0] > 0, "input_ids dimension 1 must be larger than 0");
+    NODE_ASSERT(inputIdsTensor->dims[1] > 0, "input_ids dimension 2 must be larger than 0");
+
+    NODE_ASSERT(attentionMaskTensor != nullptr, "Missing attentionMaskTensor input");
+    NODE_ASSERT(attentionMaskTensor->precision == I64, "attentionMaskTensor input is not I64");
+    NODE_ASSERT(attentionMaskTensor->dimsCount == 2, "attentionMaskTensor shape must have 2 dimensions");
+    NODE_ASSERT(attentionMaskTensor->dims[0] > 0, "attentionMaskTensor dimension 1 must be larger than 0");
+    NODE_ASSERT(attentionMaskTensor->dims[1] > 0, "attentionMaskTensor dimension 2 must be larger than 0");
+
+    NODE_ASSERT(logitsTensor->dims[0] == inputIdsTensor->dims[0], "logits and input_ids need to have matching batch");
+    NODE_ASSERT(logitsTensor->dims[0] == attentionMaskTensor->dims[0], "logits and attentionMaskTensor need to have matching batch");
 
     Model* model = static_cast<Model*>(customNodeLibraryInternalManager);
 
@@ -158,10 +178,32 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
         int32_t token = std::distance(logits, result);
 
+        // get previous token for context
+        int64_t* inputIds = reinterpret_cast<int64_t*>(
+            inputIdsTensor->data + 
+                batch * (inputIdsTensor->dims[1] * sizeof(int64_t)));
+        int64_t* attentionMask = reinterpret_cast<int64_t*>(
+            attentionMaskTensor->data + 
+                batch * (attentionMaskTensor->dims[1] * sizeof(int64_t)));
+        
+        // attentionMask contains zeros and ones.
+        // first zero indicates where the input ends and the padding begins
+        // we need to find the first zero and use the previous tokens as context
+        // tokens are in inputIds variable
+        std::vector<int64_t> previousTokens;
+        for (int i = 0; i < inputIdsTensor->dims[1]; i++) {
+            if (attentionMask[i] == 0) {
+                break;
+            }
+            previousTokens.push_back(inputIds[i]);
+        }
+        previousTokens.push_back(token);
+
         // detokenize
-        std::cout << "[detokenizer] (token " << token << ") detokenize batch " << batch << std::endl;
-        std::vector<int64_t> tokens = {token};
-        auto text = model->detokenizeEx(tokens, maxBufferLength);
+        std::cout << "[detokenizer] (" 
+            << token << ") detokenize batch "
+            << batch << std::endl;
+        auto text = model->detokenizeEx(previousTokens, maxBufferLength);
         results.push_back(text);
         std::cout << "[detokenizer] text: " << text << std::endl;
     }
@@ -207,7 +249,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 }
 
 int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
-    *infoCount = 1;
+    *infoCount = 3;
     *info = (struct CustomNodeTensorInfo*)malloc(*infoCount * sizeof(struct CustomNodeTensorInfo));
     NODE_ASSERT((*info) != nullptr, "malloc has failed");
 
@@ -219,6 +261,22 @@ int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const stru
     (*info)[0].dims[1] = -1;
     (*info)[0].dims[2] = -1;
     (*info)[0].precision = FP32;
+
+    (*info)[1].name = "input_ids";
+    (*info)[1].dimsCount = 2;
+    (*info)[1].dims = (uint64_t*)malloc((*info)[1].dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(((*info)[1].dims) != nullptr, "malloc has failed");
+    (*info)[1].dims[0] = -1;
+    (*info)[1].dims[1] = -1;
+    (*info)[1].precision = I64;
+
+    (*info)[2].name = "attention_mask";
+    (*info)[2].dimsCount = 2;
+    (*info)[2].dims = (uint64_t*)malloc((*info)[2].dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(((*info)[0].dims) != nullptr, "malloc has failed");
+    (*info)[2].dims[0] = -1;
+    (*info)[2].dims[1] = -1;
+    (*info)[2].precision = I64;
     return 0;
 }
 

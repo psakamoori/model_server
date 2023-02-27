@@ -44,7 +44,14 @@ channel = grpc.insecure_channel(args['url'],options=[
 stub = prediction_service_pb2_grpc.PredictionServiceStub(channel)
 
 input_sentence = args['input']
-print(input_sentence, end='', flush=True)
+
+multi_processing_arr = [
+    "OpenVINO is hello world program that"
+]
+
+for s in enumerate(multi_processing_arr):
+    print(s)
+print('---------------------------')
 
 iteration = 0
 first_latency = -1
@@ -53,21 +60,25 @@ while True:
     start_time = time.time()
     request = predict_pb2.PredictRequest()
     request.model_spec.name = args['model_name']
-    request.inputs['texts'].CopyFrom(make_tensor_proto([input_sentence]))
+    request.inputs['texts'].CopyFrom(make_tensor_proto(multi_processing_arr))
     results = stub.Predict(request, 10.0)
     results = make_ndarray(results.outputs['autocompletions'])
     latency = time.time() - start_time
     if first_latency == -1:
         first_latency = latency
     last_latency = latency
-    word = results[0].decode('utf-8')
-    input_sentence += word
-    print(word, end='', flush=True)
+    assert results.shape == (len(multi_processing_arr),), f"Expected shape: {(len(multi_processing_arr))}, got: {results.shape}"
+    for (i, result) in enumerate(results):
+        multi_processing_arr[i] = result.decode('utf-8')
+        print(i, multi_processing_arr[i])
+    print('---------------------------')
     iteration += 1
-    if word == "\n": # args['eos_token_id']:
-        break
+    # if word.ends == "\n": # args['eos_token_id']:
+    #     break
 
 # split line below to 3 different lines
 print(f"Number of iterations: {iteration}")
 print(f"First latency: {first_latency}s")
 print(f"Last latency: {last_latency}s")
+
+[This is exam]
