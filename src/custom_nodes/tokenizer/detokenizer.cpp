@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "../../custom_node_interface.h"
 #include "../common/utils.hpp"
@@ -89,10 +90,32 @@ int deinitialize(void* customNodeLibraryInternalManager) {
     return 0;
 }
 
+void softmax(float* input, size_t size) {
+	int i;
+	float m, sum, constant;
+
+	m = -INFINITY;
+	for (i = 0; i < size; ++i) {
+		if (m < input[i]) {
+			m = input[i];
+		}
+	}
+
+	sum = 0.0;
+	for (i = 0; i < size; ++i) {
+		sum += exp(input[i] - m);
+	}
+
+	constant = m + log(sum);
+	for (i = 0; i < size; ++i) {
+		input[i] = exp(input[i] - constant);
+	}
+}
 
 // in:  [-1, -1, 50400]
 // out: [Batch, MaxLength]
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
+    std::cout << "[detokenizer] execute()" << std::endl;
     auto start = std::chrono::steady_clock::now();
     // Parameters reading
     int maxBufferLength = get_int_parameter("max_buffer_length", params, paramsCount, -1);
@@ -119,24 +142,73 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     NODE_ASSERT(logitsTensor->dims[1] > 0, "input text dimension 2 must be larger than 0");
     NODE_ASSERT(logitsTensor->dims[2] > 0, "input text dimension 3 must be larger than 0");
 
+    Model* model = static_cast<Model*>(customNodeLibraryInternalManager);
 
-    for (uint64_t batch = 0; batch < logitsTensor->dims[0]; i++) {
+    std::vector<std::string> results;
+    for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
+        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
         // slice
-        
+        //float* logits = reinterpret_cast<float*>(logitsTensor->data + batch * (logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float));
+        float* logits = reinterpret_cast<float*>(
+            logitsTensor->data + batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) + ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));
+        auto logitsCopied = std::make_unique<float>(logitsTensor->dims[2]);
+        std::memcpy(logitsCopied.get(), logits, logitsTensor->dims[2] * sizeof(float));
+
         // softmax
+        std::cout << "[detokenizer] softmax batch " << batch << std::endl;
+        softmax(logitsCopied.get(), logitsTensor->dims[2]);
 
         // argmax
+        std::cout << "[detokenizer] argmax batch " << batch << std::endl;
+        float* result = std::max_element(logitsCopied.get(), logitsCopied.get() + logitsTensor->dims[2]);
+        int32_t token = std::distance(logitsCopied.get(), result);
 
         // detokenize
+        std::cout << "[detokenizer] (token " << token << ") detokenize batch " << batch << std::endl;
+        std::vector<int64_t> tokens = {token};
+        auto text = model->detokenizeEx(tokens, maxBufferLength);
+        results.push_back(text);
+        std::cout << "[detokenizer] text: " << text << std::endl;
     }
 
-    // Write output
+    std::cout << "[detokenizer] getting max string length" << std::endl;
+    size_t maxStringLength = 0;
+    for (const auto& str : results) {
+        maxStringLength = std::max(maxStringLength, str.size());
+    }
+    size_t width = maxStringLength + 1;
+
+    std::cout << "[detokenizer] prepraing output" << std::endl;
+    *outputsCount = 1;
+    *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));
+    if ((*outputs) == nullptr) {
+        std::cerr << "malloc has failed" << std::endl;
+        return 1;
+    }
+
+    // Outputs allocation
+    CustomNodeTensor& output = (*outputs)[0];
+    output.name = "texts";
+    output.dataBytes = width * results.size();
+    output.data = (uint8_t*)malloc(output.dataBytes);
+    output.dimsCount = 2;
+    output.dims = (uint64_t*)malloc(output.dimsCount * sizeof(uint64_t));
+    NODE_ASSERT(output.dims != nullptr, "malloc has failed");
+    output.dims[0] = results.size();
+    output.dims[1] = width;
+    output.precision = C_STRING_ARRAY;
+
+    std::cout << "[detokenizer] writing output" << std::endl;
+    for (size_t i = 0; i < results.size(); i++) {
+        std::memcpy(output.data + i * width, results[i].data(), results[i].size());
+        output.data[i * width + results[i].size()] = 0;
+    }
 
     auto end = std::chrono::steady_clock::now();
     std::cout << "[detokenizer] Elapsed time in seconds: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
          << " ms" << std::endl;
-    return 1;
+    return 0;
 }
 
 int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
