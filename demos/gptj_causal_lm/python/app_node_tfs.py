@@ -22,7 +22,7 @@ from tensorflow import make_tensor_proto, make_ndarray
 import torch
 import argparse
 import numpy as np
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -35,7 +35,7 @@ parser.add_argument('--model_name', required=False, help='Model name in the serv
 parser.add_argument('--eos_token_id', required=False, help='End of sentence token', type=int, default=198)
 args = vars(parser.parse_args())
 
-tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6B")
+#tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6B")
 
 channel = grpc.insecure_channel(args['url'],options=[
         ('grpc.max_send_message_length', 1024*1024*1024),
@@ -55,18 +55,16 @@ while True:
     request.model_spec.name = args['model_name']
     request.inputs['texts'].CopyFrom(make_tensor_proto([input_sentence]))
     results = stub.Predict(request, 10.0)
-    results = make_ndarray(results.outputs['logits'])
+    results = make_ndarray(results.outputs['autocompletions'])
     latency = time.time() - start_time
     if first_latency == -1:
         first_latency = latency
     last_latency = latency
-    predicted_token_id = token = torch.argmax(torch.nn.functional.softmax(torch.Tensor(results[0,-1,:]),dim=-1),dim=-1)
-    word = tokenizer.decode(predicted_token_id)
+    word = results[0].decode('utf-8')
     input_sentence += word
-    # print(f"Iteration: {iteration}\nLast predicted token: {predicted_token_id}\nLast latency: {last_latency}s\n{input_sentence}")
     print(word, end='', flush=True)
     iteration += 1
-    if predicted_token_id == args['eos_token_id']:
+    if word == "\n": # args['eos_token_id']:
         break
 
 # split line below to 3 different lines
