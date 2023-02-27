@@ -152,16 +152,9 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
             logitsTensor->data + 
                 batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
                 ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
-        // auto logitsCopied = std::make_unique<float[]>(logitsTensor->dims[2]);  // No need to make copy if we do not softmax
-        // std::memcpy(logitsCopied.get(), logits, logitsTensor->dims[2] * sizeof(float));
-
-        // softmax
-        // std::cout << "[detokenizer] softmax batch " << batch << std::endl;
-        // softmax(logitsCopied.get(), logitsTensor->dims[2]);
 
         // argmax
         std::cout << "[detokenizer] argmax batch " << batch << std::endl;
-        // float* result = std::max_element(logitsCopied.get(), logitsCopied.get() + logitsTensor->dims[2]);
         float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
         int32_t token = std::distance(logits, result);
 
