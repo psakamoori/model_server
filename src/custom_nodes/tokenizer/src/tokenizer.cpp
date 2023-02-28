@@ -26,6 +26,14 @@
 
 using namespace custom_nodes::tokenizer;
 
+// uncomment for logs
+#define DEBUG
+#ifdef DEBUG
+#define DEBUG_MSG(str) do { std::cout << "[tokenizer] " << str << std::endl; } while( false )
+#else
+#define DEBUG_MSG(str) do { } while ( false )
+#endif
+
 int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeParam* params, int paramsCount) {
     std::string modelPath = get_string_parameter("model_path", params, paramsCount, "");
     NODE_ASSERT(!modelPath.empty(), "model_path cannot be empty");
@@ -47,6 +55,7 @@ int deinitialize(void* customNodeLibraryInternalManager) {
 }
 
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
+    DEBUG_MSG("execute() start");
     auto start = std::chrono::steady_clock::now();
     // Parameters reading
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, -1);
@@ -84,16 +93,20 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     std::vector<std::vector<int64_t>> ids(textTensor->dims[0]);
     // For each batch, sequentially
     for (uint64_t i = 0; i < textTensor->dims[0]; i++) {
+        DEBUG_MSG("tokenizing batch " << i);
         const char* strStart = (const char*)textTensor->data + i * textTensor->dims[1];
-        std::string text(strStart, std::strlen(strStart));  // We are ensure this is 0 terminated by the server
+        std::string text(strStart, std::strlen(strStart));  // We are ensured this is 0 terminated by the server // TODO: We are not if user sends U8.
         ids[i] = model->tokenize(text, maxIdsArrLength);
+        DEBUG_MSG("tokenied batch " << i << "; of string: " << text);
     }
 
+    DEBUG_MSG("getting max token size");
     size_t maxTokenSize = 0;
     for (const auto& id : ids) {
         maxTokenSize = std::max(maxTokenSize, id.size());
     }
 
+    DEBUG_MSG("preparing output tensors");
     CustomNodeTensor& output = (*outputs)[0];
     output.name = "tokens";
     output.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
@@ -116,9 +129,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     attention.dims[1] = maxTokenSize;
     attention.precision = I64;
 
-    std::cout << "[tokenizer] tokens.dim[0]==" << output.dims[0] << std::endl;
-    std::cout << "[tokenizer] tokens.dim[1]==" << output.dims[1] << std::endl;
-
+    DEBUG_MSG("writing output");
     for (size_t i = 0; i < ids.size(); i++) {
         std::memcpy(output.data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
         for (size_t j = 0; j < ids[i].size(); j++) {
@@ -130,10 +141,10 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     }
 
     auto end = std::chrono::steady_clock::now();
-    std::cout << "[tokenizer] Elapsed time in seconds: "
+    DEBUG_MSG("elapsed time in seconds: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-         << " ms" << std::endl;
-
+         << " ms");
+    DEBUG_MSG("execute() end");
     return 0;
 }
 

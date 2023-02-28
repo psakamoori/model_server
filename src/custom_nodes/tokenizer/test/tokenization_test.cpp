@@ -11,15 +11,15 @@
 
 using namespace custom_nodes::tokenizer;
 
-// TEST(TokenizerTest, Run) {
-//     BlingFireModel model(TEST_MODEL_FILE_PATH);
-//     auto result = model.tokenize("こんにちは", 1024);
-//     std::vector<int64_t> expected = {23294, 241, 22174, 28618, 2515, 94, 31676};
-//     ASSERT_EQ(result.size(), expected.size());
-//     for (int i = 0; i < result.size(); i++) {
-//         EXPECT_EQ(result[i], expected[i]) << "expected: " << expected[i] << "; actual: " << result[i];
-//     }
-// }
+TEST(TokenizerTest, Run) {
+    BlingFireModel model(TEST_MODEL_FILE_PATH);
+    auto result = model.tokenize("こんにちは", 1024);
+    std::vector<int64_t> expected = {23294, 241, 22174, 28618, 2515, 94, 31676};
+    ASSERT_EQ(result.size(), expected.size());
+    for (int i = 0; i < result.size(); i++) {
+        EXPECT_EQ(result[i], expected[i]) << "expected: " << expected[i] << "; actual: " << result[i];
+    }
+}
 
 TEST(TokenizerTest, init_deinit) {
     void* model = nullptr;

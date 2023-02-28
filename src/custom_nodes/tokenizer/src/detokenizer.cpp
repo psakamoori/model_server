@@ -19,11 +19,20 @@
 #include <chrono>
 #include <algorithm>
 #include <vector>
+#include <sstream>
 
 #include "custom_node_interface.h"
 #include "utils.hpp"
 
 #include "model.hpp"
+
+// uncomment for logs
+// #define DEBUG
+#ifdef DEBUG
+#define DEBUG_MSG(str) do { std::cout << "[detokenizer] " << str << std::endl; } while( false )
+#else
+#define DEBUG_MSG(str) do { } while ( false )
+#endif
 
 using namespace custom_nodes::tokenizer;
 
@@ -51,7 +60,7 @@ int deinitialize(void* customNodeLibraryInternalManager) {
 // out: [Batch, MaxLength]
 int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct CustomNodeTensor** outputs, int* outputsCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
     auto start = std::chrono::steady_clock::now();
-    std::cout << "[detokenizer] execute()" << std::endl;
+    DEBUG_MSG("execute() start");
     // Parameters reading
     int maxBufferLength = get_int_parameter("max_buffer_length", params, paramsCount, -1);
     NODE_ASSERT(maxBufferLength > 0, "max_buffer_length param must be larger than 0");
@@ -102,13 +111,10 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     BlingFireModel* model = static_cast<BlingFireModel*>(customNodeLibraryInternalManager);
 
-    std::cout << "[detokenizer] logitsTensor.dim[0]==" << logitsTensor->dims[0] << std::endl;
-    std::cout << "[detokenizer] logitsTensor.dim[1]==" << logitsTensor->dims[1] << std::endl;
-    std::cout << "[detokenizer] logitsTensor.dim[2]==" << logitsTensor->dims[2] << std::endl;
-
     std::vector<std::string> results;
     for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
         // get previous tokens of current batch for context
+        DEBUG_MSG("get previous tokens of batch " << batch);
         int64_t* inputIds = reinterpret_cast<int64_t*>(
             inputIdsTensor->data + 
                 batch * (inputIdsTensor->dims[1] * sizeof(int64_t)));
@@ -127,35 +133,33 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         std::vector<int64_t> previousTokens(inputIds, inputIds + distance);
 
         // slice
-        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
+        DEBUG_MSG("slicing batch " << batch);
         float* logits = reinterpret_cast<float*>(
             logitsTensor->data + 
                 batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
                 (lastNonZeroIndex * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
 
         // argmax
-        std::cout << "[detokenizer] argmax batch " << batch << std::endl;
+        DEBUG_MSG("argmax batch " << batch);
         float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
         int64_t token = std::distance(logits, result);
         previousTokens.push_back(token);
 
         // detokenize
-        std::cout << "[detokenizer] (" 
-            << token << ") detokenize batch "
-            << batch << std::endl;
+        DEBUG_MSG("detokenizing token batch " << batch);
         auto text = model->detokenize(previousTokens, maxBufferLength);
-        std::cout << "[detokenizer] text: " << text << std::endl;
+        DEBUG_MSG("detokenized token: (" << token << ") to: (" << text << ") for batch " << batch);
         results.emplace_back(std::move(text));
     }
 
-    std::cout << "[detokenizer] getting max string length" << std::endl;
+    DEBUG_MSG("getting max string length");
     size_t maxStringLength = 0;
     for (const auto& str : results) {
         maxStringLength = std::max(maxStringLength, str.size());
     }
     size_t width = maxStringLength + 1;
 
-    std::cout << "[detokenizer] prepraing output" << std::endl;
+    DEBUG_MSG("prepraing output tensor");
     *outputsCount = 1;
     *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));
     if ((*outputs) == nullptr) {
@@ -175,16 +179,17 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     output.dims[1] = width;
     output.precision = C_STRING_ARRAY;
 
-    std::cout << "[detokenizer] writing output" << std::endl;
+    DEBUG_MSG("writing output");
     for (size_t i = 0; i < results.size(); i++) {
         std::memcpy(output.data + i * width, results[i].data(), results[i].size());
         output.data[i * width + results[i].size()] = 0;
     }
 
     auto end = std::chrono::steady_clock::now();
-    std::cout << "[detokenizer] Elapsed time in seconds: "
+    DEBUG_MSG("elapsed time in seconds: "
          << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-         << " ms" << std::endl;
+         << " ms");
+    DEBUG_MSG("execute() end");
     return 0;
 }
 

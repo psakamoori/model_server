@@ -29,13 +29,17 @@ static std::atomic<int> maxId{0};
 
 BlingFireModel::BlingFireModel(const std::string& modelPath) : id(maxId++) {
     handle = BlingFire::LoadModel(modelPath.c_str());
-    std::cout << "[tokenizer] [" << id << "] Model loaded from: " << modelPath << std::endl;
+#ifdef DEBUG
+    std::cout << "[BlingFireModel] [" << id << "] Model loaded from: " << modelPath << std::endl;
+#endif
 }
 
 BlingFireModel::~BlingFireModel() {
     if (handle) {
         BlingFire::FreeModel(handle);
-        std::cout << "[tokenizer] [" << id << "] Model unloaded." << std::endl;
+#ifdef DEBUG
+        std::cout << "[BlingFireModel] [" << id << "] Model unloaded." << std::endl;
+#endif
     }
 }
 
