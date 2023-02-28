@@ -158,6 +158,9 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     attention.dims[1] = maxTokenSize;
     attention.precision = I64;
 
+    std::cout << "[tokenizer] tokens.dim[0]==" << output.dims[0] << std::endl;
+    std::cout << "[tokenizer] tokens.dim[1]==" << output.dims[1] << std::endl;
+
     for (size_t i = 0; i < ids.size(); i++) {
         std::memcpy(output.data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
         for (size_t j = 0; j < ids[i].size(); j++) {

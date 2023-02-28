@@ -164,6 +164,10 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     Model* model = static_cast<Model*>(customNodeLibraryInternalManager);
 
+    std::cout << "[detokenizer] logitsTensor.dim[0]==" << logitsTensor->dims[0] << std::endl;
+    std::cout << "[detokenizer] logitsTensor.dim[1]==" << logitsTensor->dims[1] << std::endl;
+    std::cout << "[detokenizer] logitsTensor.dim[2]==" << logitsTensor->dims[2] << std::endl;
+
     std::vector<std::string> results;
     for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
         std::cout << "[detokenizer] slicing batch " << batch << std::endl;
@@ -172,6 +176,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
             logitsTensor->data + 
                 batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
                 ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
+        // ^ don't take last, take at the index of first zero?
 
         // argmax
         std::cout << "[detokenizer] argmax batch " << batch << std::endl;
