@@ -156,4 +156,10 @@ TEST_F(DetokenizerFixtureTest, execute) {
     ASSERT_EQ(outputs.size(), 2);
     ASSERT_EQ(outputs[0], "Hello world\"");
     ASSERT_EQ(outputs[1], "Hello!");
+
+    outputs.clear();
+    run({9.4, 0.2, -0.82, -0.74, /*start 0*/0.46, 1.18, 1.16, 1.02/*end 0*/, /*start 1*/4.2, 1.9, 0.2, 0.95,/*end 1*/ 1.0, 2.0, 3.0, 1.5}, {2,2,4}, {{18435, 995}, {}}, outputs);
+    ASSERT_EQ(outputs.size(), 2);
+    ASSERT_EQ(outputs[0], "Hello world\"");
+    ASSERT_EQ(outputs[1], "!");
 }

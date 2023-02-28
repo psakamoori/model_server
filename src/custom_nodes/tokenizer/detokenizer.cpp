@@ -131,15 +131,20 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     NODE_ASSERT(inputIdsTensor->dims[0] > 0, "input_ids dimension 1 must be larger than 0");
     NODE_ASSERT(inputIdsTensor->dims[1] > 0, "input_ids dimension 2 must be larger than 0");
 
-    NODE_ASSERT(attentionMaskTensor != nullptr, "Missing attentionMaskTensor input");
-    NODE_ASSERT(attentionMaskTensor->precision == I64, "attentionMaskTensor input is not I64");
-    NODE_ASSERT(attentionMaskTensor->dimsCount == 2, "attentionMaskTensor shape must have 2 dimensions");
-    NODE_ASSERT(attentionMaskTensor->dims[0] > 0, "attentionMaskTensor dimension 1 must be larger than 0");
-    NODE_ASSERT(attentionMaskTensor->dims[1] > 0, "attentionMaskTensor dimension 2 must be larger than 0");
+    NODE_ASSERT(attentionMaskTensor != nullptr, "Missing attention_mask input");
+    NODE_ASSERT(attentionMaskTensor->precision == I64, "attention_mask input is not I64");
+    NODE_ASSERT(attentionMaskTensor->dimsCount == 2, "attention_mask shape must have 2 dimensions");
+    NODE_ASSERT(attentionMaskTensor->dims[0] > 0, "attention_mask dimension 1 must be larger than 0");
+    NODE_ASSERT(attentionMaskTensor->dims[1] > 0, "attention_mask dimension 2 must be larger than 0");
 
-    NODE_ASSERT(logitsTensor->dims[0] == inputIdsTensor->dims[0], "logits and input_ids need to have matching batch");
-    NODE_ASSERT(logitsTensor->dims[0] == attentionMaskTensor->dims[0], "logits and attentionMaskTensor need to have matching batch");
+    NODE_ASSERT(logitsTensor->dims[0] == inputIdsTensor->dims[0], "logits and input_ids need to have matching batch dimension");
+    NODE_ASSERT(logitsTensor->dims[0] == attentionMaskTensor->dims[0], "logits and attention_mask need to have matching batch dimension");
 
+    NODE_ASSERT(logitsTensor->dims[1] == inputIdsTensor->dims[1], "logits and input_ids need to have matching second dimension");
+    NODE_ASSERT(logitsTensor->dims[1] == attentionMaskTensor->dims[1], "logits and attention_mask need to have matching second dimension");
+
+    // TODO: dims[1] should match as well
+ 
     Model* model = static_cast<Model*>(customNodeLibraryInternalManager);
 
     std::cout << "[detokenizer] logitsTensor.dim[0]==" << logitsTensor->dims[0] << std::endl;
@@ -148,40 +153,35 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     std::vector<std::string> results;
     for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
-        // get previous token for context
+        // get previous tokens of current batch for context
         int64_t* inputIds = reinterpret_cast<int64_t*>(
             inputIdsTensor->data + 
                 batch * (inputIdsTensor->dims[1] * sizeof(int64_t)));
         int64_t* attentionMask = reinterpret_cast<int64_t*>(
             attentionMaskTensor->data + 
                 batch * (attentionMaskTensor->dims[1] * sizeof(int64_t)));
-        // attentionMask contains zeros and ones.
-        // first zero indicates where the input ends and the padding begins
-        // we need to find the first zero and use the previous tokens as context
-        // tokens are in inputIds variable
-        std::vector<int64_t> previousTokens;
 
-        int lastNonZeroIndex = 0;
-        for (int i = 0; i < inputIdsTensor->dims[1]; i++) {
-            if (attentionMask[i] == 0) {
-                break;
-            }
-            lastNonZeroIndex = i;
-            previousTokens.push_back(inputIds[i]);
-        }
+        int64_t* it = std::find(attentionMask, attentionMask + attentionMaskTensor->dims[1], 0);
+        std::ptrdiff_t distance = std::distance(attentionMask, it);
+        std::ptrdiff_t lastNonZeroIndex = distance - 1;
+        
+        // case for empty string being in a batch (attention mask all zeros)
+        if (lastNonZeroIndex < 0)
+            lastNonZeroIndex = 0;
 
-        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
+        std::vector<int64_t> previousTokens(inputIds, inputIds + distance);
+
         // slice
+        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
         float* logits = reinterpret_cast<float*>(
             logitsTensor->data + 
                 batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
                 (lastNonZeroIndex * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
-        // ^ don't take last, take at the index of first zero?
 
         // argmax
         std::cout << "[detokenizer] argmax batch " << batch << std::endl;
         float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
-        int32_t token = std::distance(logits, result);
+        int64_t token = std::distance(logits, result);
         previousTokens.push_back(token);
 
         // detokenize
@@ -189,8 +189,8 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
             << token << ") detokenize batch "
             << batch << std::endl;
         auto text = model->detokenizeEx(previousTokens, maxBufferLength);
-        results.push_back(text);
         std::cout << "[detokenizer] text: " << text << std::endl;
+        results.emplace_back(std::move(text));
     }
 
     std::cout << "[detokenizer] getting max string length" << std::endl;
