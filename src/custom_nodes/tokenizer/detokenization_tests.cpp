@@ -125,26 +125,32 @@ protected:
 
 TEST_F(DetokenizerFixtureTest, execute) {
     std::vector<std::string> outputs;
+
+    // single batch, single previous token
     run({1.0, 2.0, 3.0, 1.5}, {1,1,4}, {{18435}}, outputs);
     ASSERT_EQ(outputs.size(), 1);
     ASSERT_EQ(outputs[0], "Hello#");
 
+    // single batch, 3 previous tokens
     outputs.clear();
     run({9.4, 0.2, -0.82, -0.74, 4.2, 1.9, 0.2, 0.95, /**/1.0, 2.0, 3.0, 1.5/**/}, {1,3,4}, {{23294, 241, 22174}}, outputs);
     ASSERT_EQ(outputs.size(), 1);
     ASSERT_EQ(outputs[0], "こん#");
 
+    // single batch, 3 previous tokens, different token predicted
     outputs.clear();
     run({9.4, 0.2, -0.82, -0.74, 4.2, 1.9, 12.2, 0.95, /**/0.46, 1.18, 1.16, 1.02/**/}, {1,3,4}, {{23294, 241, 22174}}, outputs);
     ASSERT_EQ(outputs.size(), 1);
     ASSERT_EQ(outputs[0], "こん\"");
 
+    // 2 batches, 2 previous tokens
     outputs.clear();
     run({9.4, 0.2, -0.82, -0.74, /*start 0*/0.46, 1.18, 1.16, 1.02/*end 0*/, 4.2, 1.9, 0.2, 0.95, /*start 1*/1.0, 2.0, 3.0, 1.5/*end 1*/}, {2,2,4}, {{18435, 995}, {18435, 995}}, outputs);
     ASSERT_EQ(outputs.size(), 2);
     ASSERT_EQ(outputs[0], "Hello world\"");
     ASSERT_EQ(outputs[1], "Hello world#");
 
+    // 2 batches, different number of previous tokens (labeled by attention mask under the hood)
     outputs.clear();
     run({9.4, 0.2, -0.82, -0.74, /*start 0*/0.46, 1.18, 1.16, 1.02/*end 0*/, /*start 1*/4.2, 1.9, 0.2, 0.95,/*end 1*/ 1.0, 2.0, 3.0, 1.5}, {2,2,4}, {{18435, 995}, {18435}}, outputs);
     ASSERT_EQ(outputs.size(), 2);
