@@ -170,19 +170,6 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     std::vector<std::string> results;
     for (uint64_t batch = 0; batch < logitsTensor->dims[0]; batch++) {
-        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
-        // slice
-        float* logits = reinterpret_cast<float*>(
-            logitsTensor->data + 
-                batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
-                ((logitsTensor->dims[1] - 1) * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
-        // ^ don't take last, take at the index of first zero?
-
-        // argmax
-        std::cout << "[detokenizer] argmax batch " << batch << std::endl;
-        float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
-        int32_t token = std::distance(logits, result);
-
         // get previous token for context
         int64_t* inputIds = reinterpret_cast<int64_t*>(
             inputIdsTensor->data + 
@@ -190,18 +177,33 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         int64_t* attentionMask = reinterpret_cast<int64_t*>(
             attentionMaskTensor->data + 
                 batch * (attentionMaskTensor->dims[1] * sizeof(int64_t)));
-        
         // attentionMask contains zeros and ones.
         // first zero indicates where the input ends and the padding begins
         // we need to find the first zero and use the previous tokens as context
         // tokens are in inputIds variable
         std::vector<int64_t> previousTokens;
+
+        int lastNonZeroIndex = 0;
         for (int i = 0; i < inputIdsTensor->dims[1]; i++) {
             if (attentionMask[i] == 0) {
                 break;
             }
+            lastNonZeroIndex = i;
             previousTokens.push_back(inputIds[i]);
         }
+
+        std::cout << "[detokenizer] slicing batch " << batch << std::endl;
+        // slice
+        float* logits = reinterpret_cast<float*>(
+            logitsTensor->data + 
+                batch * (logitsTensor->dims[1] * logitsTensor->dims[2] * sizeof(float)) +   // offset by batch
+                (lastNonZeroIndex * logitsTensor->dims[2] * sizeof(float)));     // offset to get last element of second dimension
+        // ^ don't take last, take at the index of first zero?
+
+        // argmax
+        std::cout << "[detokenizer] argmax batch " << batch << std::endl;
+        float* result = std::max_element(logits, logits + logitsTensor->dims[2]);
+        int32_t token = std::distance(logits, result);
         previousTokens.push_back(token);
 
         // detokenize
