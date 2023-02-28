@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "../../../custom_node_interface.h"
-#include "../src/model.hpp"
+#include "custom_node_interface.h"
+#include "model.hpp"
 
 using namespace custom_nodes::tokenizer;
 

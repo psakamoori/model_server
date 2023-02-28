@@ -13,20 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //*****************************************************************************
-#include <stdlib.h>
-#include <stdio.h>
-
-#include "../../../custom_node_interface.h"
-#include "../../common/utils.hpp"
-
 #include <iostream>
 #include <string>
 #include <cstring>
 #include <chrono>
-#include <atomic>
-#include <memory>
-#include <algorithm>
-#include <numeric>
+#include <vector>
+
+#include "custom_node_interface.h"
+#include "utils.hpp"
 
 #include "model.hpp"
 
