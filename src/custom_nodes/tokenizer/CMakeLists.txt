@@ -3,6 +3,8 @@ project(tokenizer)
 
 include(ExternalProject)
 
+set(CMAKE_CXX_STANDARD 17)
+
 set(BLINGFIRE_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/blingfire)
 
 ExternalProject_Add(blingfire
@@ -21,22 +23,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-add_library(tokenizer SHARED tokenizer.cpp)
+add_library(tokenizer SHARED src/model.cpp src/tokenizer.cpp)
 target_include_directories(tokenizer PRIVATE ${BLINGFIRE_INSTALL_DIR}/include)
 target_link_libraries(tokenizer
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libbingfirtinydll_static.a
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
 add_dependencies(tokenizer blingfire)
 
-add_library(detokenizer SHARED detokenizer.cpp)
+add_library(detokenizer SHARED src/model.cpp src/detokenizer.cpp)
 target_include_directories(detokenizer PRIVATE ${BLINGFIRE_INSTALL_DIR}/include)
 target_link_libraries(detokenizer
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libbingfirtinydll_static.a
     ${CMAKE_BINARY_DIR}/blingfire/src/blingfire-build/libfsaClient.a)
 add_dependencies(detokenizer blingfire)
 
-add_executable(tests tests.cpp)
-target_link_libraries(tests gtest_main tokenizer)
+add_executable(tokenization_test test/tokenization_test.cpp)
+target_link_libraries(tokenization_test gtest_main tokenizer)
 
-add_executable(detokenization_tests detokenization_tests.cpp)
-target_link_libraries(detokenization_tests gtest_main detokenizer)
+add_executable(detokenization_test test/detokenization_test.cpp)
+target_link_libraries(detokenization_test gtest_main detokenizer)
