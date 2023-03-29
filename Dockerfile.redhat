@@ -109,8 +109,8 @@ ARG ov_source_branch=releases/2022/3
 ARG ov_contrib_branch=releases/2022/3
 
 ARG JOBS
-COPY entitlement /etc/pki/entitlement
-COPY rhsm-ca /etc/rhsm/ca
+# COPY entitlement /etc/pki/entitlement
+# COPY rhsm-ca /etc/rhsm/ca
 RUN rm -f /etc/rhsm-host
 
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && dnf clean all && yum update -d6 -y && yum install -d6 -y \
@@ -137,20 +137,28 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.n
 
 ARG NVIDIA=0
 # Add Nvidia dev tool if needed
+ARG RH_ENTITLEMENT=0
 # hadolint ignore=DL3003
 RUN if [ "$NVIDIA" == "1" ] ; then true ; else exit 0 ; fi ; \
-    # Removing the cache seems to be necessary here to avoid a crash
-    yum config-manager --save --set-enabled codeready-builder-for-rhel-8-x86_64-rpms && \
+        if [ "$RH_ENTITLEMENT" == "1" ] ; then \
+            yum config-manager --save --set-enabled codeready-builder-for-rhel-8-x86_64-rpms \
+        else \
+            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+            yum -y install http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/centos-gpg-keys-8-6.el8.noarch.rpm http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/centos-stream-repos-8-6.el8.noarch.rpm && \
+            # Set priorities on ubi/cuda repos, since we only want to go to the CentOS ones for packages not available
+            yum config-manager --save --set-enabled powertools && \
+            yum config-manager --save --setopt 'ubi-8-baseos-rpms.priority=1' --setopt 'ubi-8-appstream-rpms.priority=1' --setopt 'ubi-8-codeready-builder-rpms.priority=1' --setopt 'cuda.priority=1' ; \
+        fi ; \
     yum -y module disable python36 && \
     yum install -y  \
-        libzstd-devel \
+        https://vault.centos.org/centos/8/BaseOS/x86_64/os/Packages/libzstd-devel-1.4.4-1.el8.x86_64.rpm \
         libcudnn8-8.6.0.163-1.cuda11.8 \
         libcudnn8-devel-8.6.0.163-1.cuda11.8 \
         libcutensor1-1.6.1.5-1 \
         libcutensor-devel-1.6.1.5-1 \
         cuda-cudart-devel-11-8 && \
     # ignore errors on hosts with older nvidia drivers
-    yum install -y cuda-11-8 || true && \
+    yum install -y cuda-11-8 && \
     yum install -y python38-Cython && \
     curl -L https://github.com/Kitware/ninja/releases/download/v1.10.0.gfb670.kitware.jobserver-1/ninja-1.10.0.gfb670.kitware.jobserver-1_x86_64-linux-gnu.tar.gz | tar xzv --strip-components=1 -C /usr/local/bin && \
     curl https://github.com/mozilla/sccache/releases/download/v0.2.15/sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz -L | tar xvzC /usr/local/bin --strip-components=1 --wildcards '*/sccache' && \

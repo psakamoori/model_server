@@ -48,8 +48,8 @@ BUILD_NGINX ?= 0
 # NOTE: when changing any value below, you'll need to adjust WORKSPACE file by hand:
 #         - uncomment source build section, comment binary section
 #         - adjust binary version path - version variable is not passed to WORKSPACE file!
-OV_SOURCE_BRANCH ?= master
-OV_CONTRIB_BRANCH ?= master
+OV_SOURCE_BRANCH ?= releases/2022/3
+OV_CONTRIB_BRANCH ?= releases/2022/3
 
 OV_USE_BINARY ?= 1
 APT_OV_PACKAGE ?= openvino-2022.1.0
@@ -88,10 +88,18 @@ ifeq ($(BASE_OS),ubuntu)
   DLDT_PACKAGE_URL ?= https://storage.openvinotoolkit.org/repositories/openvino/packages/2022.3/linux/l_openvino_toolkit_ubuntu20_2022.3.0.9052.9752fafe8eb_x86_64.tgz
 endif
 ifeq ($(BASE_OS),redhat)
+  RH_ENTITLEMENT ?=0
+  ifeq ($(RH_ENTITLEMENT), 1)
+    RH_ENTITLEMENT_DIR ?= /etc/pki/entitlement
+    RH_ENTITLEMENT_ID ?= entitlement
+    ENTITLEMENT_ARGS=-v $(RH_ENTITLEMENT_DIR)/$(RH_ENTITLEMENT_ID).pem:/etc/pki/entitlement/entitlement.pem:Z -v $(RH_ENTITLEMENT_DIR)/$(RH_ENTITLEMENT_ID)-key.pem:/etc/pki/entitlement/entitlement-key.pem:Z --build-arg RH_ENTITLEMENT=1
+  else
+    ENTITLEMENT_ARGS=
+  endif
   BASE_OS_TAG=$(BASE_OS_TAG_REDHAT)
   ifeq ($(NVIDIA),1)
     BASE_IMAGE=docker.io/nvidia/cuda:11.8.0-runtime-ubi8
-	BASE_IMAGE_RELEASE=docker.io/nvidia/cuda:11.8.0-runtime-ubi8
+	BASE_IMAGE_RELEASE=$BASE_IMAGE
   else
     BASE_IMAGE ?= registry.access.redhat.com/ubi8/ubi:$(BASE_OS_TAG_REDHAT)
 	BASE_IMAGE_RELEASE=registry.access.redhat.com/ubi8/ubi-minimal:$(BASE_OS_TAG_REDHAT)
@@ -205,7 +213,7 @@ ifeq ($(NVIDIA),1)
   ifeq ($(OV_USE_BINARY),1)
 	@echo "Building NVIDIA plugin requires OV built from source. To build NVIDIA plugin and OV from source make command should look like this 'NVIDIA=1 OV_USE_BINARY=0 make docker_build'"; exit 1 ;
   endif
-  ifeq ($(BASE_OS),redhat)
+  ifeq ($(RH_ENTITLEMENT),1)
 	@echo "copying RH entitlements"
 	@cp -ru /etc/pki/entitlement .
 	@cp -u /etc/rhsm/ca/* rhsm-ca/
