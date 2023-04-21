@@ -230,7 +230,11 @@ public:
             ss << " ] timestamp: " << cc->InputTimestamp().DebugString();
             MLOG(ss.str());
             const auto& ovInputShape = input_tensor.get_shape();
+<<<<<<< HEAD
             std::vector<int64_t> inputShape(ovInputShape.begin(), ovInputShape.end()); // TODO ensure ov tensors shapes conversions return error in all calcs
+=======
+            std::vector<int64_t> inputShape(ovInputShape.begin(), ovInputShape.end());  // TODO ensure ov tensors shapes conversions return error in all calcs
+>>>>>>> 5a3710549a46cbc0d88cf91629dd1cf82b8f97df
             OVMS_DataType inputDataType = OVPrecision2CAPI(input_tensor.get_element_type());
             ASSERT_CAPI_STATUS_NULL(OVMS_InferenceRequestAddInput(request, realInputName, inputDataType, inputShape.data(), inputShape.size()));
             const uint32_t notUsedNum = 0;
@@ -261,7 +265,11 @@ public:
         uint32_t outputId = 0;
         OVMS_DataType datatype = (OVMS_DataType)199;
         const int64_t* shape{nullptr};
+<<<<<<< HEAD
         uint32_t dimCount = 42;
+=======
+        size_t dimCount = 42;
+>>>>>>> 5a3710549a46cbc0d88cf91629dd1cf82b8f97df
         OVMS_BufferType bufferType = (OVMS_BufferType)199;
         uint32_t deviceId = 42;
         const char* outputName{nullptr};
