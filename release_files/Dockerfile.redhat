@@ -39,7 +39,7 @@ LABEL "description"="OpenVINO(TM) Model Server is a solution for serving AI mode
 ARG INSTALL_RPMS_FROM_URL=
 ENV INSTALL_RPMS_FROM_URL=$INSTALL_RPMS_FROM_URL
 
-ARG INSTALL_DRIVER_VERSION="22.43.24595"
+ARG INSTALL_DRIVER_VERSION="23.05.25593"
 ENV INSTALL_DRIVER_VERSION=$INSTALL_DRIVER_VERSION
 ARG NVIDIA=0
 ARG GPU=1
@@ -99,7 +99,16 @@ RUN if [ -f /usr/bin/dnf ] ; then export DNF_TOOL=dnf ; else export DNF_TOOL=mic
                         rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/intel-opencl-22.43.24595.35-i538.el8.x86_64.rpm ; \
                         rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/intel-level-zero-gpu-1.3.24595.35-i538.el8.x86_64.rpm ; \
                         rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/level-zero-1.8.8-i524.el8.x86_64.rpm ; \
-                ;; \                
+                ;; \         
+                "23.05.25593") \
+                        $DNF_TOOL install -y libedit ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/intel-gmmlib-22.3.5-i601.el8_6.x86_64.rpm ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/intel-igc-core-1.0.13230.8-i600.el8_6.x86_64.rpm ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/intel-igc-opencl-1.0.13230.8-i600.el8_6.x86_64.rpm ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/intel-opencl-23.05.25593.18-i601.el8_6.x86_64.rpm ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/intel-level-zero-gpu-1.3.25593.18-i601.el8_6.x86_64.rpm ; \
+                        rpm -ivh https://repositories.intel.com/graphics/rhel/8.6/flex/level-zero-1.9.4-i589.el8_6.x86_64.rpm ; \
+                ;; \                            
                         *) \
                         echo "ERROR: Unrecognized driver ${INSTALL_DRIVER_VERSION}." ; \
                         exit 1 ; \

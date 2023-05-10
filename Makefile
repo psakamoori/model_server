@@ -108,7 +108,7 @@ ifeq ($(BASE_OS),redhat)
 	BASE_IMAGE_RELEASE=registry.access.redhat.com/ubi8/ubi-minimal:$(BASE_OS_TAG_REDHAT)
   endif	
   DIST_OS=redhat
-  INSTALL_DRIVER_VERSION ?= "22.43.24595"
+  INSTALL_DRIVER_VERSION ?= "23.05.25593"
   DLDT_PACKAGE_URL ?= http://s3.toolbox.iotg.sclab.intel.com/ov-packages/l_openvino_toolkit_rhel8_2023.0.0.10908.5adf3b5ca82_x86_64.tgz
 endif
 
