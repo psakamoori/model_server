@@ -1,4 +1,4 @@
-# OpenVINO&trade; Model Server
+# OpenVINO&trade; Model Server 
 
 ![OVMS picture](docs/ovms.png)
 
