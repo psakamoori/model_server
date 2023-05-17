@@ -71,18 +71,13 @@ git_repository(
 )
 
 ########################################################### Mediapipe
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "87407cd28e7a9c95d9f61a098a53cf031109d451a7763e7dd1253abf8b4df422",
-    strip_prefix = "protobuf-3.19.1",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.19.1.tar.gz"],
-    #patches = [
-    #    "@//third_party:com_google_protobuf_fixes.diff"
-    #],
-    #patch_args = [
-    #    "-p1",
-    #],
-)
+# Revert single protobuf to WORKSPACE file once w/ mediapipe becomes default build
+# http_archive(
+#     name = "com_google_protobuf",
+#     sha256 = "87407cd28e7a9c95d9f61a098a53cf031109d451a7763e7dd1253abf8b4df422",
+#     strip_prefix = "protobuf-3.19.1",
+#     urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.19.1.tar.gz"],
+# )
 
 ################################### Official mediapipe repository #########
 #### Will be used on feature release

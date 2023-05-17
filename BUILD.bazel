@@ -76,3 +76,23 @@ cc_library(
         }),
   visibility = ["//visibility:public"],
 )
+
+# Conditional protobuf version:
+#  - 3.19.1 for builds with mediapipe
+#  - 3.9.2 for builds without mediapipe
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = select({
+            "//conditions:default": "87407cd28e7a9c95d9f61a098a53cf031109d451a7763e7dd1253abf8b4df422",
+            "//:disable_mediapipe" : "1fbf1c2962af287607232b2eddeaec9b4f4a7a6f5934e1a9276e9af76952f7e0",
+        }),
+    strip_prefix = select({
+            "//conditions:default": "protobuf-3.19.1",
+            "//:disable_mediapipe" : "protobuf-3.9.2",
+        }),
+    urls = select({
+            "//conditions:default": ["https://github.com/protocolbuffers/protobuf/archive/v3.19.1.tar.gz"],
+            "//:disable_mediapipe" : ["https://github.com/protocolbuffers/protobuf/archive/v3.9.2.tar.gz"],
+        }),
+)
