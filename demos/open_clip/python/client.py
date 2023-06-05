@@ -17,8 +17,9 @@ from torchvision.transforms import Normalize, Compose, RandomResizedCrop, Interp
 OPENAI_DATASET_MEAN = [0.48145466, 0.4578275, 0.40821073]
 OPENAI_DATASET_STD = [0.26862954, 0.26130258, 0.27577711]
 
-tokenizer = open_clip.get_tokenizer("ViT-B-16-plus-240")
 client = ovmsclient.make_grpc_client("localhost:8913")
+
+from tokenizer import tokenize as tokenizer
 
 # Use preprocessing method from open_clip repo
 #_, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-plus-240', pretrained='laion400m_e32')
@@ -74,7 +75,8 @@ def make_classifier():
     zeroshot_weights = []
     for classname in class_names:
         texts = [template.format(c=classname) for template in templates]
-        tokens = tokenizer(texts).to("cpu").numpy().astype("int64")
+        #tokens = tokenizer(texts).to("cpu").numpy().astype("int64")
+        tokens = tokenizer(texts)
         class_embeddings = client.predict(
             inputs={"input_ids": tokens},
             model_name="text_encoder"
