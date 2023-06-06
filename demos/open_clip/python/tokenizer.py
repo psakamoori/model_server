@@ -58,11 +58,21 @@ def get_pairs(word):
 class SimpleTokenizer(object):
     def __init__(self, bpe_path: str = default_bpe(), special_tokens=None):
         self.byte_encoder = bytes_to_unicode()
+        #print([g for g in self.byte_encoder.keys()])
+        #print([bytes(g, encoding="utf-8") for g in self.byte_encoder.values()])
+        #print(self.byte_encoder[ord('a')])
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         merges = gzip.open(bpe_path).read().decode("utf-8").split('\n')
         merges = merges[1:49152-256-2+1]
         merges = [tuple(merge.split()) for merge in merges]
+        print(merges[:20])
         vocab = list(bytes_to_unicode().values())
+        print('-------------------')
+        print(len(vocab))
+        print(vocab)
+        for k, v in zip(range(len(vocab)), [bytes(v.encode('utf-8')) for v in vocab]):
+            print(k, v)
+        print('-------------------')
         vocab = vocab + [v+'</w>' for v in vocab]
         for merge in merges:
             vocab.append(''.join(merge))
@@ -73,30 +83,31 @@ class SimpleTokenizer(object):
         vocab.extend(special_tokens)
         import json
         with open('vocab.json', 'w') as f:
-            f.write(str(json.dumps(dict(zip(vocab, range(len(vocab)))))))
+            f.write(str(json.dumps(dict(zip(vocab, range(len(vocab)))), ensure_ascii=False)))
         
         self.encoder = dict(zip(vocab, range(len(vocab))))
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.bpe_ranks = dict(zip(merges, range(len(merges))))
-        #print(self.bpe_ranks)
         self.cache = {t:t for t in special_tokens}
         special = "|".join(special_tokens)
         self.pat = re.compile(special + r"""|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""", re.IGNORECASE)
 
         self.vocab_size = len(self.encoder)
-        self.all_special_ids = [self.encoder[t] for t in special_tokens]
 
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
         word = tuple(token[:-1]) + ( token[-1] + '</w>',)
+        print("CCC", word)
         pairs = get_pairs(word)
+        print("CCC", pairs)
 
         if not pairs:
             return token+'</w>'
 
         while True:
             bigram = min(pairs, key = lambda pair: self.bpe_ranks.get(pair, float('inf')))
+            print(bigram)
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -130,7 +141,9 @@ class SimpleTokenizer(object):
     def encode(self, text):
         bpe_tokens = []
         for token in re.findall(self.pat, text):
+            print(token)
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
+            print('gg', self.bpe(token))
             bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
         return bpe_tokens
 

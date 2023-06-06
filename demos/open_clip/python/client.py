@@ -4,11 +4,17 @@ import torch
 import torch.nn.functional as F
 import open_clip
 import cv2
+import re
 from scipy.special import softmax
 from PIL import Image
 
 from torchvision.transforms import Normalize, Compose, RandomResizedCrop, InterpolationMode, ToTensor, Resize, \
     CenterCrop
+
+# import transformers
+# tk = transformers.AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32", add_prefix_space=True)
+# print(tk("a photo of a really, functistaner big cat.").input_ids)
+# exit(1)
 
 # TODO: CLI
 # TODO: --batch_size?
@@ -20,6 +26,8 @@ OPENAI_DATASET_STD = [0.26862954, 0.26130258, 0.27577711]
 client = ovmsclient.make_grpc_client("localhost:8913")
 
 from tokenizer import tokenize as tokenizer
+print(tokenizer("a photo of a really, functistaner big cat."))
+exit(1)
 
 # Use preprocessing method from open_clip repo
 #_, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-plus-240', pretrained='laion400m_e32')
@@ -134,7 +142,7 @@ def predict(image_path, label_path=None):
     return logits.argmax() == expected
 
 
-samples = 200  # change this to 10000 to test the whole dataset
+samples = 1  # change this to 10000 to test the whole dataset
 valid = 0
 for i in range(0,samples):    
     success = predict(
