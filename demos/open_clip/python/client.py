@@ -7,6 +7,7 @@ import cv2
 import re
 from scipy.special import softmax
 from PIL import Image
+import time
 
 from torchvision.transforms import Normalize, Compose, RandomResizedCrop, InterpolationMode, ToTensor, Resize, \
     CenterCrop
@@ -26,8 +27,28 @@ OPENAI_DATASET_STD = [0.26862954, 0.26130258, 0.27577711]
 client = ovmsclient.make_grpc_client("localhost:8913")
 
 from tokenizer import tokenize as tokenizer
-print(tokenizer("a photo of a really, functistaner big cat."))
+#s = time.time()
+times_sum = 0.0
+for i in range(10000):
+    start = time.time()
+    #tokens = tokenizer("a photo of a really, functistaner big cat.")
+    tokens = tokenizer("a photo of a really, big cat.")
+    elapsed = time.time()-start
+    print(elapsed)
+    times_sum += elapsed
+print('avg time', times_sum / 10000)
 exit(1)
+
+# seconds
+# 3.5212063789367676e-05  => 0.000035212063789367676
+
+# milliseconds
+# 0.035
+
+# microseconds
+# 35
+
+# 216
 
 # Use preprocessing method from open_clip repo
 #_, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-plus-240', pretrained='laion400m_e32')

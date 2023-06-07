@@ -65,14 +65,14 @@ class SimpleTokenizer(object):
         merges = gzip.open(bpe_path).read().decode("utf-8").split('\n')
         merges = merges[1:49152-256-2+1]
         merges = [tuple(merge.split()) for merge in merges]
-        print(merges[:20])
+        #print(merges[:20])
         vocab = list(bytes_to_unicode().values())
-        print('-------------------')
-        print(len(vocab))
-        print(vocab)
-        for k, v in zip(range(len(vocab)), [bytes(v.encode('utf-8')) for v in vocab]):
-            print(k, v)
-        print('-------------------')
+        #print('-------------------')
+        #print(len(vocab))
+        #print(vocab)
+        #for k, v in zip(range(len(vocab)), [bytes(v.encode('utf-8')) for v in vocab]):
+        #    print(k, v)
+        #print('-------------------')
         vocab = vocab + [v+'</w>' for v in vocab]
         for merge in merges:
             vocab.append(''.join(merge))
@@ -98,16 +98,16 @@ class SimpleTokenizer(object):
         if token in self.cache:
             return self.cache[token]
         word = tuple(token[:-1]) + ( token[-1] + '</w>',)
-        print("CCC", word)
+        #print("CCC", word)
         pairs = get_pairs(word)
-        print("CCC", pairs)
+        #print("CCC", pairs)
 
         if not pairs:
             return token+'</w>'
 
         while True:
             bigram = min(pairs, key = lambda pair: self.bpe_ranks.get(pair, float('inf')))
-            print(bigram)
+            #print(bigram)
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -141,9 +141,9 @@ class SimpleTokenizer(object):
     def encode(self, text):
         bpe_tokens = []
         for token in re.findall(self.pat, text):
-            print(token)
+            #print(token)
             token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
-            print('gg', self.bpe(token))
+            #print('gg', self.bpe(token))
             bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
         return bpe_tokens
 

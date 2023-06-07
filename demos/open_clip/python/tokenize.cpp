@@ -11,6 +11,7 @@
 #include <fstream>
 #include <map>
 #include <algorithm>
+#include <chrono>
 
 #include <pcre.h>
 #include "json.hpp"
@@ -50,6 +51,20 @@ std::vector<std::string> split_by_regex(const std::string& sentence) {
     }
     return results;
 }
+
+// a photo of a really, functistaner big cat.
+/*
+a
+photo
+of
+a
+really
+,
+functistaner
+big
+cat
+.
+*/
 
 size_t split(const std::string &txt, std::vector<std::string> &strs, char ch)
 {
@@ -162,6 +177,7 @@ public:
         if (token.size() == 0)
             throw std::logic_error("token size 0");
     
+        // f u n c t i s t a n e r</w>
         std::vector<std::string> word;
         for (size_t i = 0; i < token.size(); i++) {
             if (i == token.size() - 1) {
@@ -177,6 +193,7 @@ public:
         // std::cout << std::endl;
 
         auto pairs = get_pairs(word);
+
         // for (const auto& [k, v] : pairs) {
         //     std::cout << k << "=>" << v << std::endl;
         // }
@@ -204,6 +221,19 @@ public:
             // std::cout << std::endl;
             auto first = pair_with_lowest_rank.first;
             auto second = pair_with_lowest_rank.second;
+
+            // a n
+
+
+            // f u n c t i s t a n e r</w>
+            // f u n c t i s t an e r</w>
+            // f u n c t i s t an er</w>
+            // f un c t i s t an er</w>
+            // f unc t i s t an er</w>
+            // func t i s t an er</w>
+            // func ti s t an er</w>
+            // func ti st an er</w>
+            // func ti stan er</w>
             
             //std::cout << "Pair with lowest rank: (" << first << "," << second << ")" << std::endl;
             std::vector<std::string> new_word{};
@@ -247,19 +277,20 @@ public:
 
         auto tokens = split_by_regex(sentence);
         for (const auto& token : tokens) {
-            std::cout << "Processing: [" << token << "]...\n";
+            //std::cout << "Processing: [" << token << "]...\n";
             auto bpe_v = bpe(token);
-            std::cout << "BPE: [";
+            //std::cout << "BPE: [";
+            // func ti stan er</w>
             for (auto& b : bpe_v) {
-                std::cout << b << ";";
+                //std::cout << b << ";";
                 ids.push_back(vocab.at(b));
             }
-            std::cout << "]" << std::endl;
+            //std::cout << "]" << std::endl;
 
             // TODO: UTF8 thing
 
         }
-        std::cout << std::endl;
+        //std::cout << std::endl;
 
         return ids;
     }
@@ -271,13 +302,22 @@ public:
 void tokenize(const std::vector<std::string>& sentences, std::vector<std::vector<std::int64_t>>& tokens, int context_length = 77) {
     SimpleTokenizer tok;
 
-    for (const auto& sentence : sentences)
-        tokens.push_back(tok.encode(sentence));
+    for (int i = 0; i < 10000; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+        tok.encode(sentences[0]);
+        //for (const auto& sentence : sentences)
+        //    tokens.push_back(tok.encode(sentence));
+        auto elapsed = std::chrono::high_resolution_clock::now() - start;
+        long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+        elapsed).count();
+        std::cout << "Elapsed microseconds: " << microseconds << std::endl;
+    }
 }
 
 int main() {
     std::vector<std::string> sentences = {
-        "a photo of a really, functistaner big cat."
+        //"a photo of a really, functistaner big cat."
+        "a photo of a really, big cat."
     };
 
     std::vector<std::vector<std::int64_t>> tokens;
