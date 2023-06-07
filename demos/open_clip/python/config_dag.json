@@ -1,0 +1,83 @@
+{
+    "model_config_list": [
+        {
+            "config": {
+                "name": "text_encoder",
+                "base_path": "/models/text_encoder_fp32"
+            }
+        },
+        {
+            "config": {
+                "name": "image_encoder",
+                "base_path": "/models/image_encoder_fp32"
+            }
+        }
+    ],
+    "custom_node_library_config_list": [
+        {
+            "name": "tokenizer",
+            "base_path": "/workspace/custom_nodes/libclip_tokenizer.so"
+        }
+    ],
+    "pipeline_config_list": [
+        {
+            "name": "text_encoder_dag",
+            "inputs": [
+                "input_ids"
+            ],
+            "nodes": [
+                {
+                    "name": "node_1",
+                    "type": "custom",
+                    "inputs": [
+                        {
+                            "texts": {
+                                "node_name": "request",
+                                "data_item": "input_ids"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "data_item": "input_ids",
+                            "alias": "out"
+                        }
+                    ],
+                    "library_name": "tokenizer",
+                    "params": {
+                        "debug": "true",
+                        "vocab_path": "/workspace/custom_nodes/vocab.json",
+                        "merges_path": "/workspace/custom_nodes/merges.txt"
+                    }
+                },
+                {
+                    "name": "text_encoder_node",
+                    "model_name": "text_encoder",
+                    "type": "DL model",
+                    "inputs": [
+                        {
+                            "input_ids": {
+                                "node_name": "node_1",
+                                "data_item": "out"
+                            }
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "data_item": "text_embeds",
+                            "alias": "text_embeds"
+                        }
+                    ]
+                }
+            ],
+            "outputs": [
+                {
+                    "text_embeds": {
+                        "node_name": "text_encoder_node",
+                        "data_item": "text_embeds"
+                    }
+                }
+            ]
+        }
+    ]
+}
