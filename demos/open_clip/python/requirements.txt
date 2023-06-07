@@ -1,4 +1,4 @@
-ovmsclient==2022.3.0
+ovmsclient==2023.0
 numpy==1.24.2
 torch==1.13.1
 open-clip-torch==2.20.0
