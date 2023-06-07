@@ -35,6 +35,7 @@ endif
 	mkdir -p ./lib/$(BASE_OS)
 	docker cp $$(docker create --rm tokenizer_build_image:latest):/custom_nodes/tokenizer/build/src/libdetokenizer.so ./lib/$(BASE_OS)/
 	docker cp $$(docker create --rm tokenizer_build_image:latest):/custom_nodes/tokenizer/build/src/libtokenizer.so ./lib/$(BASE_OS)/
+	docker cp $$(docker create --rm tokenizer_build_image:latest):/custom_nodes/tokenizer/build/src/libclip_tokenizer.so ./lib/$(BASE_OS)/
 	echo "Built tokenizer"
 	@rm -rf ./common
 	@rm custom_node_interface.h

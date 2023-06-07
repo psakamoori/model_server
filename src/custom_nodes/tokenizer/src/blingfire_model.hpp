@@ -23,19 +23,19 @@
 namespace custom_nodes {
 namespace tokenizer {
 
-class BlingFireModel : public Model {
+class BlingFireModel{
     int id;
     void* handle = nullptr;
     bool debug;
 
 public:
     BlingFireModel(const std::string& modelPath, bool debug = false);
-    ~BlingFireModel() override;
+    ~BlingFireModel();
 
     bool isValid() const { return handle != nullptr; }
 
-    std::vector<int64_t> tokenize(const std::string& text, int maxIdsArrLength) override;
-    std::string detokenize(const std::vector<int64_t>& tokens, int maxBufferLength, bool skipSpecialTokens = false) override;
+    std::vector<int64_t> tokenize(const std::string& text, int maxIdsArrLength);
+    std::string detokenize(const std::vector<int64_t>& tokens, int maxBufferLength, bool skipSpecialTokens = false);
 };
 
 }  // namespace tokenizer

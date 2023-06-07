@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "custom_node_interface.h"  // NOLINT
-#include "model.hpp"
+#include "blingfire_model.hpp"
 
 using namespace custom_nodes::tokenizer;
 

@@ -129,6 +129,7 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         const char* strStart = (const char*)textTensor->data + batch * textTensor->dims[1];
         std::string text(strStart, strnlen(strStart, textTensor->dims[1]));
         ids[batch] = model->tokenize(text, maxIdsArrLength);
+        ids[batch].resize(std::min((size_t)contextLength, ids[batch].size()));
         DEBUG_MSG("tokenized batch " << batch << "; of string: " << text);
     }
 
@@ -141,34 +142,35 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     DEBUG_MSG("preparing output tensors");
     CustomNodeTensor& tokens = (*outputs)[0];
     tokens.name = OUTPUT_NAME_TOKENS;
-    tokens.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
+    tokens.dataBytes = sizeof(int64_t) * contextLength * ids.size();
     tokens.data = (uint8_t*)malloc(tokens.dataBytes);
+    std::memset(tokens.data, 0, tokens.dataBytes);
     tokens.dimsCount = 2;
     tokens.dims = (uint64_t*)malloc(tokens.dimsCount * sizeof(uint64_t));
     NODE_ASSERT(tokens.dims != nullptr, "malloc has failed");
     tokens.dims[0] = ids.size();
-    tokens.dims[1] = maxTokenSize;
+    tokens.dims[1] = contextLength;
     tokens.precision = I64;
 
     CustomNodeTensor& attention = (*outputs)[1];
     attention.name = OUTPUT_NAME_ATTENTION;
-    attention.dataBytes = sizeof(int64_t) * maxTokenSize * ids.size();
+    attention.dataBytes = sizeof(int64_t) * contextLength * ids.size();
     attention.data = (uint8_t*)malloc(attention.dataBytes);
     attention.dimsCount = 2;
     attention.dims = (uint64_t*)malloc(attention.dimsCount * sizeof(uint64_t));
     NODE_ASSERT(attention.dims != nullptr, "malloc has failed");
     attention.dims[0] = ids.size();
-    attention.dims[1] = maxTokenSize;
+    attention.dims[1] = contextLength;
     attention.precision = I64;
 
     DEBUG_MSG("writing output");
     for (size_t i = 0; i < ids.size(); i++) {
-        std::memcpy(tokens.data + i * maxTokenSize * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
+        std::memcpy(tokens.data + i * contextLength * sizeof(int64_t), ids[i].data(), ids[i].size() * sizeof(int64_t));
         for (size_t j = 0; j < ids[i].size(); j++) {
-            ((int64_t*)attention.data)[i * maxTokenSize + j] = 1;
+            ((int64_t*)attention.data)[i * contextLength + j] = 1;
         }
-        for (size_t j = ids[i].size(); j < maxTokenSize; j++) {
-            ((int64_t*)attention.data)[i * maxTokenSize + j] = 0;
+        for (size_t j = ids[i].size(); j < contextLength; j++) {
+            ((int64_t*)attention.data)[i * contextLength + j] = 0;
         }
     }
     auto end = std::chrono::steady_clock::now();

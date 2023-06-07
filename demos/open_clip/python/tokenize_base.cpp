@@ -89,7 +89,7 @@ size_t split(const std::string &txt, std::vector<std::string> &strs, char ch)
 class SimpleTokenizer {
     json vocab;
     std::map<std::pair<std::string, std::string>, int64_t> bpe_ranks;
-    unsigned char dd[3] = {0xc2,0xac,0x00};
+    
 public:
     SimpleTokenizer(const std::string bpe_path = "bpe_simple_vocab_16e6.txt"/* TODO: special tokens? */) {
 
@@ -222,6 +222,8 @@ public:
             auto first = pair_with_lowest_rank.first;
             auto second = pair_with_lowest_rank.second;
 
+            // a n
+
 
             // f u n c t i s t a n e r</w>
             // f u n c t i s t an e r</w>
@@ -271,33 +273,14 @@ public:
     }
 
     std::vector<std::int64_t> encode(const std::string& sentence) {
-        std::cout << "Tokenizing: " << sentence << std::endl;
         std::vector<std::int64_t> ids;
 
         auto tokens = split_by_regex(sentence);
-
-/*
-"a photo of a really, functistaner big cat."
-a
-photo
-of
-a
-really
-,
-functistaner
-big
-cat
-.
-*/
-
         for (const auto& token : tokens) {
-            std::cout << "Processing: [" << token << "]...\n";
+            //std::cout << "Processing: [" << token << "]...\n";
             auto bpe_v = bpe(token);
             //std::cout << "BPE: [";
-
-            // functistaner
             // func ti stan er</w>
-
             for (auto& b : bpe_v) {
                 //std::cout << b << ";";
                 ids.push_back(vocab.at(b));
@@ -308,40 +291,26 @@ cat
 
         }
         //std::cout << std::endl;
+
         return ids;
     }
 };
 
 
-#define OVECCOUNT 30    /* Maximum number of capturing groups */
-
 void tokenize(const std::vector<std::string>& sentences, std::vector<std::vector<std::int64_t>>& tokens, int context_length = 77) {
     SimpleTokenizer tok;
 
-    for (int i = 0; i < 1; i++) {
-        auto start = std::chrono::high_resolution_clock::now();
-        //tok.encode(sentences[0]);
+    //for (int i = 0; i < 10000; i++) {
+    //    auto start = std::chrono::high_resolution_clock::now();
+    //    tok.encode(sentences[0]);
         for (const auto& sentence : sentences)
             tokens.push_back(tok.encode(sentence));
-        auto elapsed = std::chrono::high_resolution_clock::now() - start;
-        long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-        std::cout << "Elapsed microseconds: " << microseconds << std::endl;
-    }
+    //    auto elapsed = std::chrono::high_resolution_clock::now() - start;
+    //    long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+    //    elapsed).count();
+    //    std::cout << "Elapsed microseconds: " << microseconds << std::endl;
+    //}
 }
-
-/*
-"a photo of a really, functistaner big cat."
-a
-photo
-of
-a
-really
-,
-functistaner
-big
-cat
-.
-*/
 
 int main() {
     std::vector<std::string> sentences = {

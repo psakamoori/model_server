@@ -39,6 +39,15 @@ file(DOWNLOAD
     https://github.com/microsoft/BlingFire/raw/${BLINGFIRE_SHA}/ldbsrc/ldb/gpt2.i2w
     ${CMAKE_BINARY_DIR}/gpt2.i2w)
 
+
+file(DOWNLOAD
+    https://huggingface.co/openai/clip-vit-base-patch32/raw/main/vocab.json
+    ${CMAKE_BINARY_DIR}/vocab.json)
+
+file(DOWNLOAD
+    https://huggingface.co/openai/clip-vit-base-patch32/raw/main/merges.txt
+    ${CMAKE_BINARY_DIR}/merges.txt)
+
 add_executable(tokenization_test tokenization_test.cpp)
 target_include_directories(tokenization_test PRIVATE ${UTIL_DIRS})
 target_link_libraries(tokenization_test gtest_main tokenizer)
@@ -46,3 +55,7 @@ target_link_libraries(tokenization_test gtest_main tokenizer)
 add_executable(detokenization_test detokenization_test.cpp)
 target_include_directories(detokenization_test PRIVATE ${UTIL_DIRS})
 target_link_libraries(detokenization_test gtest_main detokenizer)
+
+add_executable(clip_tokenization_test clip_tokenization_test.cpp)
+target_include_directories(clip_tokenization_test PRIVATE ${UTIL_DIRS})
+target_link_libraries(clip_tokenization_test gtest_main clip_tokenizer)

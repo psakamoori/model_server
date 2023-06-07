@@ -2,7 +2,7 @@ import ovmsclient
 import numpy as np
 import torch
 import torch.nn.functional as F
-import open_clip
+#import open_clip
 import cv2
 import re
 from scipy.special import softmax
@@ -12,10 +12,6 @@ import time
 from torchvision.transforms import Normalize, Compose, RandomResizedCrop, InterpolationMode, ToTensor, Resize, \
     CenterCrop
 
-# import transformers
-# tk = transformers.AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32", add_prefix_space=True)
-# print(tk("a photo of a really, functistaner big cat.").input_ids)
-# exit(1)
 
 # TODO: CLI
 # TODO: --batch_size?
@@ -24,9 +20,7 @@ from torchvision.transforms import Normalize, Compose, RandomResizedCrop, Interp
 OPENAI_DATASET_MEAN = [0.48145466, 0.4578275, 0.40821073]
 OPENAI_DATASET_STD = [0.26862954, 0.26130258, 0.27577711]
 
-client = ovmsclient.make_grpc_client("localhost:8913")
-
-from tokenizer import tokenize as tokenizer
+client = ovmsclient.make_grpc_client("localhost:8787")
 
 # Use preprocessing method from open_clip repo
 #_, _, preprocess = open_clip.create_model_and_transforms('ViT-B-16-plus-240', pretrained='laion400m_e32')
@@ -82,10 +76,12 @@ def make_classifier():
     zeroshot_weights = []
     for classname in class_names:
         texts = [template.format(c=classname) for template in templates]
-        tokens = tokenizer(texts)
+        #tokens = tokenizer(texts).to("cpu").numpy().astype("int64")
+        #tokens = tokenizer(texts)
         class_embeddings = client.predict(
-            inputs={"input_ids": tokens},
-            model_name="text_encoder"
+            #inputs={"input_ids": tokens},
+            inputs={"input_ids": texts},
+            model_name="text_encoder_dag"
         )
         class_embeddings = torch.from_numpy(class_embeddings)
         class_embeddings = F.normalize(class_embeddings, dim=-1).mean(dim=0)

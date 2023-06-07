@@ -255,7 +255,7 @@ std::vector<std::string> ClipModel::bpe(const std::string& token) {
 std::vector<std::int64_t> ClipModel::encode(const std::string& sentence) {
     std::cout << "Tokenizing: [" << sentence << "]" << std::endl;
     std::vector<std::int64_t> ids;
-    ids.push_back(vocab.at("<start_of_text>"));
+    ids.push_back(vocab.at("<|startoftext|>"));
     auto tokens = split_by_regex(sentence);
     for (const auto& token : tokens) {
         std::cout << "Processing: [" << token << "]...\n";
@@ -270,11 +270,11 @@ std::vector<std::int64_t> ClipModel::encode(const std::string& sentence) {
         // TODO: UTF8 thing
     }
     std::cout << std::endl;
-    ids.push_back(vocab.at("<end_of_text>"));
+    ids.push_back(vocab.at("<|endoftext|>"));
     return ids;
 }
 
-std::vector<int64_t> ClipModel::tokenize(const std::string& text, int maxIdsArrLength) {
+std::vector<int64_t> ClipModel::tokenize(const std::string& text, int maxIdsArrLength/*unused*/) {
     // maxIdsArrLength TODO?
     return encode(text);
 }

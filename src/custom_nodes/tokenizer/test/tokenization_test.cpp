@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "custom_node_interface.h"  // NOLINT
-#include "model.hpp"
+#include "blingfire_model.hpp"
 
 #define TEST_MODEL_FILE_PATH "./gpt2.bin"
 
