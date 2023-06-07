@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "custom_node_interface.h"  // NOLINT
-#include "model.hpp"
+#include "blingfire_model.hpp"
 #include "utils.hpp"
 
 #define DEBUG_MSG(str)                                     \

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //*****************************************************************************
-#include "model.hpp"
+#include "blingfire_model.hpp"
 
 #include <algorithm>
 #include <atomic>

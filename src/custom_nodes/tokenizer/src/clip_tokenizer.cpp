@@ -23,7 +23,7 @@
 #include <string.h>
 
 #include "custom_node_interface.h"  // NOLINT
-#include "blingfire_model.hpp"
+#include "clip_model.hpp"
 #include "utils.hpp"
 
 #define INPUT_NAME_TEXTS "texts"
@@ -36,6 +36,8 @@
 // Consider using memory pool.
 #define DEFAULT_MAX_ID_ARR_LEN 1024
 
+#define DEFAULT_CONTEXT_LENGTH 77  // for CLIP=77
+
 using namespace custom_nodes::tokenizer;
 
 #define DEBUG_MSG(str)                                   \
@@ -45,15 +47,17 @@ using namespace custom_nodes::tokenizer;
 
 int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeParam* params, int paramsCount) {
     bool debugMode = get_string_parameter("debug", params, paramsCount) == "true";
-    std::string modelPath = get_string_parameter("model_path", params, paramsCount, "");
-    NODE_ASSERT(!modelPath.empty(), "model_path cannot be empty");
+    std::string vocabPath = get_string_parameter("vocab_path", params, paramsCount, "");
+    std::string mergesPath = get_string_parameter("merges_path", params, paramsCount, "");
+    NODE_ASSERT(!vocabPath.empty(), "vocab_path cannot be empty");
+    NODE_ASSERT(!mergesPath.empty(), "merges_path cannot be empty");
     try {
-        auto cnlim = std::make_unique<BlingFireModel>(modelPath, debugMode);
-        if (!cnlim->isValid())
-            throw std::exception();
+        auto cnlim = std::make_unique<ClipModel>(vocabPath, mergesPath, debugMode);
+        // if (!cnlim->isValid())
+        //     throw std::exception();
         *customNodeLibraryInternalManager = cnlim.release();
     } catch (...) {
-        std::cerr << "[tokenizer] initialize() fail: Cannot load tokenization model from path: " << modelPath << std::endl;
+        std::cerr << "[tokenizer] initialize() fail: Cannot load tokenization model from path: " << vocabPath << "; " << mergesPath << std::endl;
         return 1;
     }
     return 0;
@@ -61,7 +65,7 @@ int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeP
 
 int deinitialize(void* customNodeLibraryInternalManager) {
     if (customNodeLibraryInternalManager != nullptr) {
-        BlingFireModel* manager = static_cast<BlingFireModel*>(customNodeLibraryInternalManager);
+        ClipModel* manager = static_cast<ClipModel*>(customNodeLibraryInternalManager);
         delete manager;
     }
     return 0;
@@ -100,14 +104,16 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     DEBUG_MSG("execute() start");
     // Parameters reading
     int maxIdsArrLength = get_int_parameter("max_ids_arr_length", params, paramsCount, DEFAULT_MAX_ID_ARR_LEN);
+    int contextLength = get_int_parameter("context_length", params, paramsCount, DEFAULT_CONTEXT_LENGTH);
     NODE_ASSERT(maxIdsArrLength > 0, "max_ids_arr_length param must be larger than 0");
+    NODE_ASSERT(contextLength > 0, "contextLength param must be larger than 0");
 
     const CustomNodeTensor* textTensor = nullptr;
 
     NODE_ASSERT(retrieveInputs(inputs, inputsCount, &textTensor) == 0, "retrieveInputs() failed");
     NODE_ASSERT(validateInputs(textTensor) == 0, "validateInputs() failed");
 
-    BlingFireModel* model = static_cast<BlingFireModel*>(customNodeLibraryInternalManager);
+    ClipModel* model = static_cast<ClipModel*>(customNodeLibraryInternalManager);
 
     *outputsCount = 2;
     *outputs = (struct CustomNodeTensor*)malloc(*outputsCount * sizeof(CustomNodeTensor));

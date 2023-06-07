@@ -18,16 +18,24 @@
 #include <string>
 #include <vector>
 
+#include "model.hpp"
+
 namespace custom_nodes {
 namespace tokenizer {
 
-class Model {
+class BlingFireModel : public Model {
+    int id;
+    void* handle = nullptr;
+    bool debug;
 
 public:
-    virtual ~Model() = 0;
+    BlingFireModel(const std::string& modelPath, bool debug = false);
+    ~BlingFireModel() override;
 
-    virtual std::vector<int64_t> tokenize(const std::string& text, int maxIdsArrLength) = 0;
-    virtual std::string detokenize(const std::vector<int64_t>& tokens, int maxBufferLength, bool skipSpecialTokens = false) = 0;
+    bool isValid() const { return handle != nullptr; }
+
+    std::vector<int64_t> tokenize(const std::string& text, int maxIdsArrLength) override;
+    std::string detokenize(const std::vector<int64_t>& tokens, int maxBufferLength, bool skipSpecialTokens = false) override;
 };
 
 }  // namespace tokenizer
