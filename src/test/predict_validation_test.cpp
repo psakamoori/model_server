@@ -96,6 +96,20 @@ TEST_F(TfsPredictValidation, ValidRequest) {
     EXPECT_TRUE(status.ok());
 }
 
+TEST_F(TfsPredictValidation, RequestWithScalar) {
+    servableInputs = ovms::tensor_map_t({
+            {"Input_FP32_Scalar",
+                std::make_shared<ovms::TensorInfo>("Input_FP32_Scalar", ovms::Precision::FP32, ovms::shape_t{}, ovms::Layout{"..."})}
+        });
+    preparePredictRequest(request,
+            {
+                {"Input_FP32_Scalar",
+                    std::tuple<ovms::signed_shape_t, ovms::Precision>{{}, ovms::Precision::FP32}}
+            });
+    auto status = instance->mockValidate(&request);
+    EXPECT_TRUE(status.ok());
+}
+
 TEST_F(TfsPredictValidation, RequestNotEnoughInputs) {
     request.mutable_inputs()->erase("Input_U8_1_3_62_62_NCHW");
 
@@ -202,6 +216,30 @@ TEST_F(TfsPredictValidation, RequestWrongBatchSizeBinaryInputs) {
     EXPECT_EQ(status, ovms::StatusCode::INVALID_BATCH_SIZE);
 }
 
+TEST_F(TfsPredictValidation, BinaryRequestEndpointScalar) {
+    std::string inputName = "Binary_Input";
+    tensorflow::serving::PredictRequest binaryInputRequest;
+
+    auto& input = (*binaryInputRequest.mutable_inputs())[inputName];
+    input.set_dtype(tensorflow::DataType::DT_STRING);
+    const int requestBatchSize = 2;
+    for (int i = 0; i < requestBatchSize; i++) {
+        input.add_string_val("val");
+    }
+    input.mutable_tensor_shape()->add_dim()->set_size(requestBatchSize);
+
+    servableInputs.clear();
+    ovms::shape_t shape = {};
+    servableInputs[inputName] = std::make_shared<ovms::TensorInfo>(
+        inputName,
+        ovms::Precision::FP32,
+        shape,
+        ovms::Layout{"..."});
+
+    auto status = instance->mockValidate(&binaryInputRequest);
+    EXPECT_EQ(status, ovms::StatusCode::NOT_IMPLEMENTED);
+}
+
 TEST_F(TfsPredictValidation, RequestWrongBatchSizeAutoBinaryInputs) {
     modelConfig.setBatchingParams("auto");
     std::string inputName = "Binary_Input";
@@ -225,6 +263,30 @@ TEST_F(TfsPredictValidation, RequestWrongBatchSizeAutoBinaryInputs) {
 
     auto status = instance->mockValidate(&binaryInputRequest);
     EXPECT_EQ(status, ovms::StatusCode::BATCHSIZE_CHANGE_REQUIRED);
+}
+
+TEST_F(TfsPredictValidation, RequestWithScalarBatchSizeAuto) {
+    modelConfig.setBatchingParams("auto");
+
+    // First is incorrect, second is correct, but endpoint is abnormal anyway (scalar with batch size auto)
+    preparePredictRequest(request, {{"im_data", {{3, 3, 800, 1344}, ovms::Precision::FP32}},
+                                       {"im_info", {{}, ovms::Precision::FP32}}});
+
+    servableInputs.clear();
+    servableInputs = ovms::tensor_map_t{
+        {"im_data", std::make_shared<ovms::TensorInfo>("im_data", ovms::Precision::FP32, ovms::shape_t{1, 3, 800, 1344}, ovms::Layout{"NCHW"})},
+        {"im_info", std::make_shared<ovms::TensorInfo>("im_info", ovms::Precision::FP32, ovms::shape_t{}, ovms::Layout{"..."})},
+    };
+
+    auto status = instance->mockValidate(&request);
+    EXPECT_EQ(status, ovms::StatusCode::INTERNAL_ERROR);
+
+    // First and second is correct, but endpoint is abnormal (scalar with batch size auto)
+    preparePredictRequest(request, {{"im_data", {{1, 3, 800, 1344}, ovms::Precision::FP32}},
+                                       {"im_info", {{}, ovms::Precision::FP32}}});
+
+    status = instance->mockValidate(&request);
+    EXPECT_EQ(status, ovms::StatusCode::INTERNAL_ERROR);
 }
 
 TEST_F(TfsPredictValidation, RequestWrongAndCorrectBatchSizeAuto) {
@@ -407,6 +469,24 @@ TEST_F(TfsPredictValidation, RequestWrongShapeValuesFixedFirstDim) {
 TEST_F(TfsPredictValidation, RequestIncorrectContentSize) {
     auto& input = (*request.mutable_inputs())["Input_I64_1_6_128_128_16_NCDHW"];
     *input.mutable_tensor_content() = std::string(1 * 6, '1');
+
+    auto status = instance->mockValidate(&request);
+    EXPECT_EQ(status, ovms::StatusCode::INVALID_CONTENT_SIZE);
+}
+
+TEST_F(TfsPredictValidation, RequestIncorrectContentSizeForScalarEndpoint) {
+    servableInputs = ovms::tensor_map_t({
+            {"Input_FP32_Scalar",
+                std::make_shared<ovms::TensorInfo>("Input_FP32_Scalar", ovms::Precision::FP32, ovms::shape_t{}, ovms::Layout{"..."})}
+        });
+    preparePredictRequest(request,
+            {
+                {"Input_FP32_Scalar",
+                    std::tuple<ovms::signed_shape_t, ovms::Precision>{{}, ovms::Precision::FP32}}
+            });
+
+    auto& input = (*request.mutable_inputs())["Input_FP32_Scalar"];
+    *input.mutable_tensor_content() = std::string(sizeof(float)+1, '1');
 
     auto status = instance->mockValidate(&request);
     EXPECT_EQ(status, ovms::StatusCode::INVALID_CONTENT_SIZE);
