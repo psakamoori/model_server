@@ -63,6 +63,8 @@ cc_library(
         "@linux_opencv//:opencv",
         "@com_github_jupp0r_prometheus_cpp//core",
         "@oneTBB//:tbb",
+        "@python_linux//:python38-lib",
+        "@numpy-headers//:headers"
         ] + select({
             "//conditions:default": [
                 "@mediapipe//mediapipe/framework:calculator_framework",

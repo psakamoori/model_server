@@ -15,6 +15,9 @@
 //*****************************************************************************
 #include "server.hpp"
 
+#define PY_SSIZE_T_CLEAN
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
@@ -52,6 +55,10 @@
 #include "servablemanagermodule.hpp"
 #include "stringutils.hpp"
 #include "version.hpp"
+
+
+#include <Python.h>
+//#include "numpy/arrayobject.h"
 
 using grpc::ServerBuilder;
 
@@ -299,6 +306,12 @@ static int statusToExitCode(const Status& status) {
 
 // OVMS Start
 int Server::start(int argc, char** argv) {
+
+    Py_Initialize();
+    //import_array();
+    PyRun_SimpleString("print('dupa')");
+    Py_Finalize();
+
     installSignalHandlers();
     CLIParser parser;
     ServerSettingsImpl serverSettings;

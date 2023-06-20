@@ -381,6 +381,7 @@ cc_library(
         }),
     deps = [
         "//:ovms_dependencies",
+        
         "//src/kfserving_api:kfserving_api_cpp",
         ] + select({
             "//conditions:default": [
@@ -396,7 +397,6 @@ cc_library(
     copts = [
         "-Wall",
         "-Wno-unknown-pragmas",
-        "-Werror",
     ],
     visibility = [
         "//visibility:public",
@@ -445,6 +445,19 @@ cc_binary(
     srcs = [
 	    "test/custom_nodes/node_add_sub.c",
 	    "custom_node_interface.h",
+    ],
+    linkshared = 1,
+)
+
+cc_binary(
+    name = "lib_node_python.so",
+    srcs = [
+	    "test/custom_nodes/node_python.cpp",
+	    "custom_node_interface.h",
+    ],
+    deps = [
+        "@python_linux//:python38-lib",
+        "@numpy-headers//:headers"
     ],
     linkshared = 1,
 )

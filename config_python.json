@@ -1,0 +1,33 @@
+{
+    "model_config_list": [],
+    "custom_node_library_config_list": [
+        {
+            "name": "python_executor",
+            "base_path": "/ovms/bazel-bin/src/lib_node_python.so"
+        }
+    ],
+    "pipeline_config_list": [
+        {
+            "name": "python_pipeline",
+            "inputs": ["input"],
+            "nodes": [
+                {
+                    "name": "python_custom_node",
+                    "library_name": "python_executor",
+                    "type": "custom",
+                    "inputs": [
+                        {"input": {"node_name": "request",
+                                   "data_item": "input"}}
+                    ],
+                    "outputs": [
+                        {"data_item": "output",
+                         "alias": "output"}
+                    ]
+                }
+            ],
+            "outputs": [
+                {"output": {"node_name": "python_custom_node", "data_item": "output"}}
+            ]
+        }
+    ]
+}

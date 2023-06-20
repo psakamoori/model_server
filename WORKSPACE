@@ -171,6 +171,32 @@ new_local_repository(
     path = "/opt/opencv/",
 )
 
+new_local_repository(
+    name = "python_linux",
+    path = "/usr",
+    build_file_content = """
+cc_library(
+    name = "python38-lib",
+    srcs = ["lib/python3.8/config-3.8-x86_64-linux-gnu/libpython3.8.so"],
+    hdrs = glob(["include/python3.8/*.h"]),
+    includes = ["include/python3.8"],
+    visibility = ["//visibility:public"]
+)
+    """
+)
+
+new_local_repository(
+    name = "numpy-headers",
+    path = "/usr/local/lib/python3.8/dist-packages/numpy/core/include",
+    build_file_content = """
+package(default_visibility = ["//visibility:public"])
+cc_library(
+    name = "headers",
+    hdrs = glob(["**/*.h"]),
+)
+"""
+)
+
 ########################################################### Mediapipe end
 
 # minitrace
