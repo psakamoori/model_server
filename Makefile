@@ -96,6 +96,8 @@ endif
 DIST_OS ?= $(BASE_OS)
 DIST_OS_TAG ?= $(BASE_OS_TAG)
 
+PROTOBUF_VERSION ?= 3.9.2
+
 ifeq ($(BASE_OS),ubuntu)
   BASE_OS_TAG=$(BASE_OS_TAG_UBUNTU)
   ifeq ($(NVIDIA),1)
@@ -283,6 +285,7 @@ endif
 		--build-arg ov_use_binary=$(OV_USE_BINARY) \
 		--build-arg sentencepiece=$(SENTENCEPIECE) \
 		--build-arg DLDT_PACKAGE_URL=$(DLDT_PACKAGE_URL) \
+		--build-arg PROTOBUF_VERSION=$(PROTOBUF_VERSION) \
 		--build-arg APT_OV_PACKAGE=$(APT_OV_PACKAGE) \
 		--build-arg CHECK_COVERAGE=$(CHECK_COVERAGE) \
 		--build-arg RUN_TESTS=$(RUN_TESTS)\
