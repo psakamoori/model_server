@@ -53,6 +53,8 @@ using ovms::InferenceResponse;
 using ovms::InferenceTensor;
 using ovms::StatusCode;
 
+const int SLEEP_TIME_AFTER_THREAD_STARTED_MS = 1;
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnarrowing"
 static void serializeAndCheck(int outputSize, ov::InferRequest& inferRequest, const std::string& outputName, const ovms::tensor_map_t& outputsInfo) {
@@ -144,10 +146,9 @@ public:
 
         std::vector<std::promise<void>> releaseWaitBeforeGettingModelInstance(waitingBeforeGettingModelCount);
         std::vector<std::promise<void>> releaseWaitBeforePerformInference(waitingBeforePerformInferenceCount);
-        ///XXX
         std::vector<std::promise<void>> threadsWaitingBeforeGettingModelInstanceStarted(waitingBeforeGettingModelCount);
         std::vector<std::promise<void>> threadsWaitingBeforePerformInferenceStarted(waitingBeforePerformInferenceCount);
-    std::promise<void> thread1Started, thread2Started;
+        std::promise<void> thread1Started, thread2Started;
 
         std::vector<std::thread> predictsWaitingBeforeGettingModelInstance;
         std::vector<std::thread> predictsWaitingBeforeInference;
@@ -186,7 +187,7 @@ public:
         for (auto& p : threadsWaitingBeforePerformInferenceStarted) {
             p.get_future().get();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME_AFTER_THREAD_STARTED_MS));
         for (auto& promise : releaseWaitBeforeGettingModelInstance) {
             promise.set_value();
         }
@@ -227,7 +228,7 @@ public:
         for (auto& p : threadsWaitingBeforeGettingModelInstanceStarted) {
             p.get_future().get();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME_AFTER_THREAD_STARTED_MS));
         for (auto& promise : releaseWaitBeforeGettingModelInstance) {
             promise.set_value();
         }
@@ -755,7 +756,7 @@ TYPED_TEST(TestPredict, SuccesfullReloadWhen1InferenceInProgress) {
         });
     thread1Started.get_future().get();
     thread2Started.get_future().get();
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME_AFTER_THREAD_STARTED_MS));
     releaseWaitBeforePerformInferenceBs1.set_value();
     releaseWaitBeforeGetModelInstanceBs2.set_value();
     t1.join();
@@ -795,7 +796,7 @@ TYPED_TEST(TestPredict, SuccesfullReloadWhen1InferenceAboutToStart) {
         });
     thread1Started.get_future().get();
     thread2Started.get_future().get();
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME_AFTER_THREAD_STARTED_MS));
     releaseWaitBeforePerformInferenceBs2.set_value();
     releaseWaitBeforeGetModelInstanceBs1.set_value();
     t1.join();
