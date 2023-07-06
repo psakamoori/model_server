@@ -41,6 +41,7 @@
 #include "../tfs_frontend/tfs_utils.hpp"
 #include "c_api_test_utils.hpp"
 #include "mediapipe/calculators/ovms/modelapiovmsadapter.hpp"
+#include "opencv2/opencv.hpp"
 #include "test_utils.hpp"
 
 using namespace ovms;
@@ -94,6 +95,13 @@ class MediapipeFlowKfsTest : public MediapipeFlowTest {
 public:
     void SetUp() {
         SetUpServer("/ovms/src/test/mediapipe/config_mediapipe_dummy_kfs.json");
+    }
+};
+
+class MediapipeFlowImageInput : public MediapipeFlowTest {
+public:
+    void SetUp() {
+        SetUpServer("/ovms/src/test/mediapipe/config_mediapipe_image_input.json");
     }
 };
 
@@ -185,6 +193,40 @@ public:
         SetUpServer("/ovms/src/test/mediapipe/config_mediapipe_dummy_adapter_default_subconfig.json");
     }
 };
+
+TEST_F(MediapipeFlowImageInput, Infer) {
+    const ovms::Module* grpcModule = server.getModule(ovms::GRPC_SERVER_MODULE_NAME);
+    KFSInferenceServiceImpl& impl = dynamic_cast<const ovms::GRPCServerModule*>(grpcModule)->getKFSGrpcImpl();
+    ::KFSRequest request;
+    ::KFSResponse response;
+    const std::string modelName = "mediapipeImageInput";
+    request.Clear();
+    response.Clear();
+    cv::Mat imageRaw = cv::imread("/ovms/src/test/binaryutils/rgb4x4.jpg", cv::IMREAD_UNCHANGED);
+    ASSERT_TRUE(!imageRaw.empty());
+    cv::Mat image;
+    imageRaw.convertTo(image, CV_8UC3);
+    KFSTensorInputProto* input = request.add_inputs();
+    input->set_name("in");
+    input->set_datatype("UINT8");
+    input->mutable_shape()->Clear();
+
+    input->add_shape(image.rows);
+    input->add_shape(image.cols);
+    input->add_shape(image.channels());
+    std::string* content = request.add_raw_input_contents();
+    content->resize(image.cols * image.rows * image.channels() * sizeof(uint8_t));
+    std::memcpy(content->data(), image.data, image.cols * image.rows * image.channels() * sizeof(uint8_t));
+    request.mutable_model_name()->assign(modelName);
+    ASSERT_EQ(impl.ModelInfer(nullptr, &request, &response).error_code(), grpc::StatusCode::OK);
+    ASSERT_EQ(response.model_name(), modelName);
+    ASSERT_EQ(response.outputs_size(), 1);
+    ASSERT_EQ(response.raw_output_contents_size(), 1);
+    ASSERT_EQ(response.raw_output_contents()[0].size(), image.cols * image.rows * image.channels() * sizeof(uint8_t));
+    for (uint64_t i = 0; i < image.cols * image.rows * image.channels() * sizeof(uint8_t); i++) {
+        ASSERT_EQ(((uint8_t*)(response.raw_output_contents()[0].data()))[i], (uint8_t)(image.data[i]));
+    }
+}
 
 TEST_P(MediapipeFlowKfsTest, Infer) {
     const ovms::Module* grpcModule = server.getModule(ovms::GRPC_SERVER_MODULE_NAME);

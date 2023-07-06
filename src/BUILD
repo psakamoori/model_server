@@ -775,6 +775,7 @@ cc_test(
             "test/mediapipeflow_test.cpp",
             "test/mediapipe_validation_test.cpp",
             "test/mediapipe/ovms_kfs_calculator.cc",
+            "test/mediapipe/ovms_image_input_calculator.cc",
         ],
         "//src:disable_mediapipe" : [],
         }),
