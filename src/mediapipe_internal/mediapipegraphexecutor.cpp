@@ -163,24 +163,6 @@ static Status deserializeTensor(const std::string& requestedName, const KFSReque
     return Status(StatusCode::INTERNAL_ERROR, "Unexpected error during Tensor creation");
 }
 
-static Status convertKFSDataTypeToMatFormat(const KFSDataType& datatype, size_t& matFormat) {
-    static std::unordered_map<KFSDataType, size_t> datatypeFormatMap{
-        {"UINT8", CV_8U},
-        {"UINT16", CV_16U},
-        {"INT8", CV_8S},
-        {"INT16", CV_16S},
-        {"INT32", CV_32S},
-        {"FP16", CV_16F},
-        {"FP32", CV_32F},
-        {"FP64", CV_64F}};
-    auto it = datatypeFormatMap.find(datatype);
-    if (it == datatypeFormatMap.end()) {
-        return StatusCode::INTERNAL_ERROR;
-    }
-    matFormat = it->second;
-    return StatusCode::OK;
-}
-
 static Status matFormatToImageFormat(const size_t& matFormat, mediapipe::ImageFormat::Format& imageFormat) {
     switch (matFormat) {
     case CV_8UC1:
@@ -201,15 +183,33 @@ static Status matFormatToImageFormat(const size_t& matFormat, mediapipe::ImageFo
     case CV_16UC4:
         imageFormat = mediapipe::ImageFormat::SRGBA64;
         break;
+    case CV_8SC1:
+        imageFormat = mediapipe::ImageFormat::GRAY8;
+        break;
+    case CV_8SC3:
+        imageFormat = mediapipe::ImageFormat::SRGB;
+        break;
+    case CV_8SC4:
+        imageFormat = mediapipe::ImageFormat::SRGBA;
+        break;
+    case CV_16SC1:
+        imageFormat = mediapipe::ImageFormat::GRAY16;
+        break;
+    case CV_16SC3:
+        imageFormat = mediapipe::ImageFormat::SRGB48;
+        break;
+    case CV_16SC4:
+        imageFormat = mediapipe::ImageFormat::SRGBA64;
+        break;
     case CV_32FC1:
         imageFormat = mediapipe::ImageFormat::VEC32F1;
         break;
     case CV_32FC2:
         imageFormat = mediapipe::ImageFormat::VEC32F2;
         break;
-    case CV_32FC4:
-        // imageFormat = mediapipe::ImageFormat::VEC32F4;
-        break;
+    // case CV_32FC4:
+    //     imageFormat = mediapipe::ImageFormat::VEC32F4;
+    //     break;
     default:
         return StatusCode::INTERNAL_ERROR;
         break;
@@ -245,21 +245,22 @@ static Status deserializeTensor(const std::string& requestedName, const KFSReque
         SPDLOG_ERROR("Received tensor datatype: {} is not supported for MediaPipe::Image format", requestInputItr->datatype());
         return status;
     }
-    int elementSize = KFSDataTypeSize(requestInputItr->datatype());
     size_t numberOfPixels = requestInputItr->shape()[0] * requestInputItr->shape()[1];
     size_t numberOfChannels = requestInputItr->shape()[2];
     if (numberOfChannels == 0) {
         SPDLOG_ERROR("Invalid Mediapipe Image input. Cannot calculate number of channels from input shape.");
         return Status(StatusCode::INTERNAL_ERROR, "Unexpected error during Tensor creation");
     }
-    size_t expectedSize = numberOfPixels * numberOfChannels * elementSize;
     auto matFormatWithChannels = CV_MAKETYPE(matFormat, numberOfChannels);
+    SPDLOG_ERROR("IMAGE matFormatWithChannels {}, Number of Channels {}", matFormatWithChannels, numberOfChannels);
     cv::Mat camera_frame(requestInputItr->shape()[0], requestInputItr->shape()[1], matFormatWithChannels);
+    size_t expectedSize = numberOfPixels * numberOfChannels * camera_frame.elemSize1();
     std::memcpy(camera_frame.data, bufferLocation.data(), expectedSize);
     mediapipe::ImageFormat::Format imageFormat = mediapipe::ImageFormat::UNKNOWN;
     status = matFormatToImageFormat(matFormatWithChannels, imageFormat);
+    SPDLOG_ERROR("IMAGE FORMAT {}", imageFormat);
     if (!status.ok()) {
-        SPDLOG_ERROR("Invalid cv::Mat format. Cannot convert to MediaPipe::Format.");
+        SPDLOG_ERROR("Invalid cv::Mat format {}. Cannot convert to MediaPipe::Format.", matFormatWithChannels);
         return status;
     }
     auto outTensorFrame = std::make_shared<mediapipe::ImageFrame>(
@@ -267,7 +268,13 @@ static Status deserializeTensor(const std::string& requestedName, const KFSReque
         mediapipe::ImageFrame::kDefaultAlignmentBoundary);
     cv::Mat input_frame_mat = mediapipe::formats::MatView(outTensorFrame.get());
     camera_frame.copyTo(input_frame_mat);
+    SPDLOG_ERROR("IMAGE FORMAT {}", outTensor.image_format());
     outTensor = mediapipe::Image(outTensorFrame);
+    SPDLOG_ERROR("IMAGE Frame FORMAT {}", outTensorFrame->Format());
+    SPDLOG_ERROR("IMAGE FORMAT {}", outTensor.GetImageFrameSharedPtr()->Format());
+    SPDLOG_ERROR("IMAGE FORMAT {}", outTensor.image_format());
+    SPDLOG_ERROR("Uses GPU {}", outTensor.UsesGpu());
+    
 
     return StatusCode::OK;
 }
@@ -442,10 +449,10 @@ static Status convertImageFormatToKFSDataType(const mediapipe::ImageFormat::Form
         datatype = "UINT8";
         break;
     case mediapipe::ImageFormat::SRGB48:
-        datatype = "UINT8";
+        datatype = "UINT16";
         break;
     case mediapipe::ImageFormat::SRGBA64:
-        datatype = "UINT8";
+        datatype = "UINT16";
         break;
     case mediapipe::ImageFormat::VEC32F1:
         datatype = "FP32";
@@ -463,27 +470,84 @@ static Status convertImageFormatToKFSDataType(const mediapipe::ImageFormat::Form
     return StatusCode::OK;
 }
 
+static int GetMatType(const mediapipe::ImageFormat::Format format) {
+  int type = 0;
+  switch (format) {
+    case mediapipe::ImageFormat::UNKNOWN:
+      // Invalid; Default to uchar.
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::SRGB:
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::SRGBA:
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::GRAY8:
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::GRAY16:
+      type = CV_16U;
+      break;
+    case mediapipe::ImageFormat::YCBCR420P:
+      // Invalid; Default to uchar.
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::YCBCR420P10:
+      // Invalid; Default to uint16.
+      type = CV_16U;
+      break;
+    case mediapipe::ImageFormat::SRGB48:
+      type = CV_16U;
+      break;
+    case mediapipe::ImageFormat::SRGBA64:
+      type = CV_16U;
+      break;
+    case mediapipe::ImageFormat::VEC32F1:
+      type = CV_32F;
+      break;
+    case mediapipe::ImageFormat::VEC32F2:
+      type = CV_32FC2;
+      break;
+    // case mediapipe::ImageFormat::VEC32F4:
+    //   type = CV_32FC4;
+    //   break;
+    case mediapipe::ImageFormat::LAB8:
+      type = CV_8U;
+      break;
+    case mediapipe::ImageFormat::SBGRA:
+      type = CV_8U;
+      break;
+    default:
+      type = CV_8U;
+      break;
+  }
+  return type;
+}
+
 template <>
 Status receiveAndSerializePacket<mediapipe::Image>(::mediapipe::Packet& packet, KFSResponse& response, const std::string& outputStreamName) {
     const mediapipe::Image received = packet.Get<mediapipe::Image>();
     auto* output = response.add_outputs();
     output->set_name(outputStreamName);
     KFSDataType datatype;
-    auto status = convertImageFormatToKFSDataType(received.image_format(), datatype);
-    if (!status.ok())
+    auto status = convertImageFormatToKFSDataType(received.GetImageFrameSharedPtr()->Format(), datatype);
+    if (!status.ok()){
+        SPDLOG_DEBUG("Output mediapipe::ImageFormat {} conversion to KFS Datatype failed.", received.image_format());
         return status;
+    }
     output->set_datatype(datatype);
     output->clear_shape();
-    output->add_shape(received.height());
-    output->add_shape(received.width());
-    output->add_shape(received.channels());
-
-    std::shared_ptr<cv::Mat> imageMat = mediapipe::formats::MatView(&received);
+    output->add_shape(received.GetImageFrameSharedPtr()->Height());
+    output->add_shape(received.GetImageFrameSharedPtr()->Width());
+    output->add_shape(received.GetImageFrameSharedPtr()->ChannelSize());
+    
+    cv::Mat imageMat = mediapipe::formats::MatView(received.GetImageFrameSharedPtr().get());
 
     cv::Mat image;
-    imageMat.get()->convertTo(image, CV_8UC3);
+    imageMat.convertTo(image, GetMatType(received.GetImageFrameSharedPtr()->Format()));
 
-    response.add_raw_output_contents()->assign(reinterpret_cast<char*>(image.data), image.cols * image.rows * image.channels() * sizeof(uint8_t));
+    response.add_raw_output_contents()->assign(reinterpret_cast<char*>(image.data), image.cols * image.rows * image.channels() * image.elemSize1());
     return StatusCode::OK;
 }
 
