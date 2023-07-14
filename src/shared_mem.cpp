@@ -4,12 +4,20 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <unistd.h>
+#include <memory>
 
 #include "custom_node_interface.h"
 
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/interprocess/sync/named_condition.hpp>
+#include <boost/interprocess/sync/named_semaphore.hpp>
 
 using namespace boost::interprocess;
 
@@ -28,14 +36,22 @@ class MyManager {
     managed_shared_memory segment;
     const ShmemAllocator alloc_inst;
 public:
+    std::unique_ptr<named_semaphore> sem1;
+    std::unique_ptr<named_semaphore> sem2;
     MyManager() :
         __cleaned(shared_memory_object::remove(shm_id)),
         segment(managed_shared_memory(create_only, shm_id, max_mem)),
         alloc_inst(segment.get_segment_manager())
     {
+        named_semaphore::remove("MySem1");
+        named_semaphore::remove("MySem2");
+        sem1 = std::make_unique<named_semaphore>(open_or_create, "MySem1", 0);
+        sem2 = std::make_unique<named_semaphore>(open_or_create, "MySem2", 0);
         std::cout << "------------- Hi!" << std::endl;
     }
     ~MyManager() {
+        named_semaphore::remove("MySem1");
+        named_semaphore::remove("MySem2");
         shared_memory_object::remove(shm_id);
         std::cout << "------------- Bye!" << std::endl;
     }
@@ -59,8 +75,28 @@ public:
 
 int initialize(void** customNodeLibraryInternalManager, const struct CustomNodeParam* params, int paramsCount) {
     *customNodeLibraryInternalManager = (void*) new MyManager();
+
+    if (fork() == 0) {
+        // child
+        char* command = "bazel-bin/src/processing_worker";
+        char* argument_list[] = {"bazel-bin/src/processing_worker", NULL};
+
+        int status_code = execvp(command, argument_list);
+        if (status_code == -1) {
+            printf("Terminated Incorrectly\n");
+        } else {
+            printf("Thread executed!\n");
+        }
+        fflush(stdout);
+        exit(0);
+    } else {
+        // parent
+
+    }
+
     return 0;
 }
+
 
 int deinitialize(void* customNodeLibraryInternalManager){
     delete (MyManager*)(customNodeLibraryInternalManager);
@@ -79,19 +115,20 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
 
     const struct CustomNodeTensor* input = &inputs[0];
 
-    if (input->precision != FP32) {
+    if (input->precision != U8) {
         return 4;
     }
 
     std::string id;
     MyVector* input_shm;
-
+    try {
     {
         measure m("------- Creating object id time: ");
-        id = std::to_string((int64_t)input->data);
+        //id = std::to_string((int64_t)input->data);
+        id = "MyVector";
     } {
         measure m("------- Constructing vector time: ");
-        input_shm = mgr->getSegment().construct<MyVector>(id.c_str())(mgr->getAllocator());
+        input_shm = mgr->getSegment().find_or_construct<MyVector>(id.c_str())(mgr->getAllocator());
     } {
         measure m("------- Resize vector time: ");
         input_shm->resize(input->dataBytes);
@@ -99,11 +136,23 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         measure m("------- Copying tensor to shared memory vector: ");
         std::memcpy(input_shm->data(), input->data, input->dataBytes);
     } {
-        measure m("------- Editing shared memory (+1): ");
-        std::for_each(input_shm->begin(), input_shm->end(), [](uint8_t& e) {
-            e += 1;
-        });
+        measure m("------- Editing shared memory in another process(+1): ");
+        mgr->sem1->post();
+        mgr->sem2->wait();
     }
+    /* 120mb
+
+------- Creating object id time: 0ms
+------- Constructing vector time: 0.001ms
+------- Resize vector time: 0ms
+------- Copying tensor to shared memory vector: 13.215ms
+Processing.... --------------------
+Finished processing! --------------------
+------- Editing shared memory in another process(+1): 201.503ms
+------- Copying from shared memory vector to output tensor: 92.841ms
+------- Removing boost managed vector: 0ms
+
+    */
 
     *outputsCount = 1;
     *outputs = (struct CustomNodeTensor*)malloc(sizeof(struct CustomNodeTensor) * (*outputsCount));
@@ -122,24 +171,26 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         std::memcpy(output->data, input_shm->data(), output->dataBytes);
     } {
         measure m("------- Removing boost managed vector: ");
-        mgr->getSegment().destroy<MyVector>(id.c_str());
+        // mgr->getSegment().destroy<MyVector>(id.c_str());
     }
-
+    } catch(interprocess_exception &ex){
+      std::cout << ex.what() << std::endl;
+      return 1;
+   }
     return 0;
 }
 
-// Some unit tests are based on a fact that this node library is dynamic and can take shape{1,3} as input.
 int getInputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const struct CustomNodeParam* params, int paramsCount, void* customNodeLibraryInternalManager) {
     *infoCount = 1;
     *info = (struct CustomNodeTensorInfo*) malloc (*infoCount * sizeof(struct CustomNodeTensorInfo));
     (*info)->name = "in";
     (*info)->dimsCount = 4;
     (*info)->dims = (uint64_t*) malloc((*info)->dimsCount * sizeof(uint64_t));
-    (*info)->dims[0] = 10;
+    (*info)->dims[0] = 40;
     (*info)->dims[1] = 3;
     (*info)->dims[2] = 1024;
-    (*info)->dims[3] = 1024;
-    (*info)->precision = FP32;
+    (*info)->dims[3] = 1024;  // 120mb
+    (*info)->precision = U8;
     return 0;
 }
 
@@ -149,11 +200,11 @@ int getOutputsInfo(struct CustomNodeTensorInfo** info, int* infoCount, const str
     (*info)->name = "out";
     (*info)->dimsCount = 4;
     (*info)->dims = (uint64_t*) malloc((*info)->dimsCount * sizeof(uint64_t));
-    (*info)->dims[0] = 10;
+    (*info)->dims[0] = 40;
     (*info)->dims[1] = 3;
     (*info)->dims[2] = 1024;
-    (*info)->dims[3] = 1024;
-    (*info)->precision = FP32;
+    (*info)->dims[3] = 1024;  // 120mb
+    (*info)->precision = U8;
     return 0;
 }
 

@@ -457,6 +457,19 @@ cc_binary(
 )
 
 cc_binary(
+    name = "processing_worker",
+    srcs = [
+	    "processing_worker.cpp",
+    ],
+    deps = [
+        "@boost//:lib",
+    ],
+    linkopts = [
+        "-lrt", "-lpthread"
+    ]
+)
+
+cc_binary(
     name = "lib_node_add_sub.so",
     srcs = [
 	    "test/custom_nodes/node_add_sub.c",
