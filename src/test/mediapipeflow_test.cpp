@@ -268,7 +268,6 @@ public:
     }
 };
 
-
 TEST_F(MediapipeFlowImageInput, UINT8) {
     PerformTestWithGivenDatatype("UINT8");
 }

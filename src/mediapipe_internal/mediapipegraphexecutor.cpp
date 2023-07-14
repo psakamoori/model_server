@@ -274,7 +274,6 @@ static Status deserializeTensor(const std::string& requestedName, const KFSReque
     SPDLOG_ERROR("IMAGE FORMAT {}", outTensor.GetImageFrameSharedPtr()->Format());
     SPDLOG_ERROR("IMAGE FORMAT {}", outTensor.image_format());
     SPDLOG_ERROR("Uses GPU {}", outTensor.UsesGpu());
-    
 
     return StatusCode::OK;
 }
@@ -471,58 +470,58 @@ static Status convertImageFormatToKFSDataType(const mediapipe::ImageFormat::Form
 }
 
 static int GetMatType(const mediapipe::ImageFormat::Format format) {
-  int type = 0;
-  switch (format) {
+    int type = 0;
+    switch (format) {
     case mediapipe::ImageFormat::UNKNOWN:
-      // Invalid; Default to uchar.
-      type = CV_8U;
-      break;
+        // Invalid; Default to uchar.
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::SRGB:
-      type = CV_8U;
-      break;
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::SRGBA:
-      type = CV_8U;
-      break;
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::GRAY8:
-      type = CV_8U;
-      break;
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::GRAY16:
-      type = CV_16U;
-      break;
+        type = CV_16U;
+        break;
     case mediapipe::ImageFormat::YCBCR420P:
-      // Invalid; Default to uchar.
-      type = CV_8U;
-      break;
+        // Invalid; Default to uchar.
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::YCBCR420P10:
-      // Invalid; Default to uint16.
-      type = CV_16U;
-      break;
+        // Invalid; Default to uint16.
+        type = CV_16U;
+        break;
     case mediapipe::ImageFormat::SRGB48:
-      type = CV_16U;
-      break;
+        type = CV_16U;
+        break;
     case mediapipe::ImageFormat::SRGBA64:
-      type = CV_16U;
-      break;
+        type = CV_16U;
+        break;
     case mediapipe::ImageFormat::VEC32F1:
-      type = CV_32F;
-      break;
+        type = CV_32F;
+        break;
     case mediapipe::ImageFormat::VEC32F2:
-      type = CV_32FC2;
-      break;
+        type = CV_32FC2;
+        break;
     // case mediapipe::ImageFormat::VEC32F4:
     //   type = CV_32FC4;
     //   break;
     case mediapipe::ImageFormat::LAB8:
-      type = CV_8U;
-      break;
+        type = CV_8U;
+        break;
     case mediapipe::ImageFormat::SBGRA:
-      type = CV_8U;
-      break;
+        type = CV_8U;
+        break;
     default:
-      type = CV_8U;
-      break;
-  }
-  return type;
+        type = CV_8U;
+        break;
+    }
+    return type;
 }
 
 template <>
@@ -532,7 +531,7 @@ Status receiveAndSerializePacket<mediapipe::Image>(::mediapipe::Packet& packet, 
     output->set_name(outputStreamName);
     KFSDataType datatype;
     auto status = convertImageFormatToKFSDataType(received.GetImageFrameSharedPtr()->Format(), datatype);
-    if (!status.ok()){
+    if (!status.ok()) {
         SPDLOG_DEBUG("Output mediapipe::ImageFormat {} conversion to KFS Datatype failed.", received.image_format());
         return status;
     }
@@ -541,7 +540,7 @@ Status receiveAndSerializePacket<mediapipe::Image>(::mediapipe::Packet& packet, 
     output->add_shape(received.GetImageFrameSharedPtr()->Height());
     output->add_shape(received.GetImageFrameSharedPtr()->Width());
     output->add_shape(received.GetImageFrameSharedPtr()->ChannelSize());
-    
+
     cv::Mat imageMat = mediapipe::formats::MatView(received.GetImageFrameSharedPtr().get());
 
     cv::Mat image;

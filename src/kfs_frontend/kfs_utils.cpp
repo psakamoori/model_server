@@ -21,12 +21,12 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include "opencv2/opencv.hpp"
 
 #include "../logging.hpp"
 #include "../profiler.hpp"
 #include "../status.hpp"
 #include "../tensorinfo.hpp"
+#include "opencv2/opencv.hpp"
 
 namespace ovms {
 Precision KFSPrecisionToOvmsPrecision(const KFSDataType& datatype) {
