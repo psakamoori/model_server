@@ -448,6 +448,15 @@ cc_binary(
 )
 
 cc_binary(
+    name = "libunix_socket.so",
+    srcs = [
+	    "unix_socket.cpp",
+	    "custom_node_interface.h",
+    ],
+    linkshared = 1,
+)
+
+cc_binary(
     name = "libshared_mem.so",
     srcs = [
 	    "shared_mem.cpp",
