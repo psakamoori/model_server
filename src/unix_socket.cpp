@@ -96,19 +96,27 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
         return 4;
     }
 
-    uint32_t sizeVal = input->dataBytes;
-    ssize_t sentBytes = send(mgr->sockfd, (void*)&sizeVal, 4, 0);
-    if (sentBytes == -1) {
-        std::cout << "Could not send sizeVal bytes" << std::endl;
-        close(mgr->sockfd);
-        return 1;
+    uint32_t sizeVal;
+    ssize_t sentBytes;
+    {
+        measure m("------- Sending 4 bytes with data length info time: ");
+        sizeVal = input->dataBytes;
+        sentBytes = send(mgr->sockfd, (void*)&sizeVal, 4, 0);
+        if (sentBytes == -1) {
+            std::cout << "Could not send sizeVal bytes" << std::endl;
+            close(mgr->sockfd);
+            return 1;
+        }
     }
 
-    sentBytes = send(mgr->sockfd, input->data, input->dataBytes, 0);
-    if (sentBytes == -1) {
-        std::cout << "Could not send bytes" << std::endl;
-        close(mgr->sockfd);
-        return 1;
+    {
+        measure m("------- Sending payload time: ");
+        sentBytes = send(mgr->sockfd, input->data, input->dataBytes, 0);
+        if (sentBytes == -1) {
+            std::cout << "Could not send bytes" << std::endl;
+            close(mgr->sockfd);
+            return 1;
+        }
     }
 
     *outputsCount = 1;
@@ -123,25 +131,43 @@ int execute(const struct CustomNodeTensor* inputs, int inputsCount, struct Custo
     memcpy((void*)output->dims, (void*)input->dims, input->dimsCount * sizeof(uint64_t));
     output->precision = input->precision;
 
+    // {
+    //     measure m("------- Copying from input tensor to output tensor: ");
+    //     std::memcpy(output->data, input->data, output->dataBytes);
+    // }
+
+    ssize_t receivedBytes;
     {
-        measure m("------- Copying from input tensor to output tensor: ");
-        std::memcpy(output->data, input->data, output->dataBytes);
+        measure m("------- Receiving 4 bytes with payload length info time: ");
+        receivedBytes = recv(mgr->sockfd, (void*)&sizeVal, 4, 0);
+        if (receivedBytes == -1) {
+            std::cout << "Count not recv sizeVal bytes" << std::endl;
+            close(mgr->sockfd);
+        }
+        //std::cout << "received 4 bytes, sizeVal is: " << sizeVal << std::endl;
     }
-
-    ssize_t receivedBytes = recv(mgr->sockfd, (void*)&sizeVal, 4, 0);
-    if (receivedBytes == -1) {
-        std::cout << "Count not recv sizeVal bytes" << std::endl;
-        close(mgr->sockfd);
+    ssize_t totalRecvBytes = 0;
+    {
+        measure m("------- Receiving payload time: ");
+        while (totalRecvBytes < sizeVal) {
+            receivedBytes = recv(mgr->sockfd, output->data + totalRecvBytes, sizeVal - totalRecvBytes, 0);
+            if (receivedBytes == -1 || receivedBytes == 0) {
+                std::cout << "Count not recv bytes" << std::endl;
+                close(mgr->sockfd);
+            }
+            totalRecvBytes += receivedBytes;
+            // std::cout << "received bytes:  " << receivedBytes << std::endl;
+        }
     }
-    std::cout << "received 4 bytes, sizeVal is: " << sizeVal << std::endl;
+/*
+120 MB
+------- Sending 4 bytes with data length info time: 0.133ms
+------- Sending payload time: 302.319ms
+------- Receiving 4 bytes with payload length info time: 181.696ms (181.18834495544434ms is numpy +1 addition time)
+------- Receiving payload time: 114.773ms
+*/
 
-    receivedBytes = recv(mgr->sockfd, output->data, sizeVal, 0);
-    if (receivedBytes == -1) {
-        std::cout << "Count not recv bytes" << std::endl;
-        close(mgr->sockfd);
-    }
-    std::cout << "received bytes: " << receivedBytes << std::endl;
-
+// overhead 417ms
     return 0;
 }
 

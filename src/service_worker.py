@@ -3,6 +3,8 @@ import platform
 import socket
 import sys
 import struct
+import numpy as np
+import time
 
 class ServiceWorker(object):
     def __init__(self):
@@ -21,17 +23,30 @@ class ServiceWorker(object):
             size_val, = struct.unpack('<I', size_pkt)
             print('size_val: ', size_val)
 
-            pkt = cl_socket.recv(size_val)
-            if len(pkt) == 0:
-                print('Frontend disconnected.')
-                sys.exit(0)
-            
+            data = bytearray()
+
+            while len(data) < size_val:
+                pkt = cl_socket.recv(size_val-len(data))
+                if len(pkt) == 0:
+                    print('Frontend disconnected.')
+                    sys.exit(0)
+                data += pkt
+            pkt = data
+
             print(f"Received {len(pkt)} bytes")
-            resp = list()
-            for b in pkt:
-                resp.append(b + 1)
-            resp_bytes = bytes(resp)
+            #resp = list()
+            #for b in pkt:
+            #    resp.append(b + 1)
+            #resp_bytes = bytes(resp)
+            now = time.time()
+            y = np.frombuffer(pkt, dtype='uint8').reshape((40,3,1024,1024))
+            y = y + 1
+            resp_bytes = y.tobytes()
+            t = time.time() - now
+            print('processing end, time:', t)
+            print('sending size_val...')
             cl_socket.sendall(struct.pack("<I", size_val))
+            print(f'sending resp_bytes {len(resp_bytes)}...')
             cl_socket.sendall(resp_bytes)
             print(f"Sent {size_val} bytes back.")
     
