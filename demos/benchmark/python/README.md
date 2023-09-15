@@ -298,4 +298,4 @@ NO_PROXY=localhost no_proxy=localhost python3 /ovms_benchmark_client/main.py -a 
     p95 latency: 15.58 ms
 ```
 Many other client options together with benchmarking examples are presented in
-[an additional PDF document](https://github.com/openvinotoolkit/model_server/blob/releases/2023/0/docs/python-benchmarking-client-16feb.pdf). 
+[an additional PDF document](https://github.com/openvinotoolkit/model_server/blob/main/docs/python-benchmarking-client-16feb.pdf). 
