@@ -284,25 +284,26 @@ XI worker: warmup_fail_stdev_latency: 0.0
 XI worker: warmup_fail_cv_latency: 0.0
 ```
 
-Summary of the benchmark results can be viewed by enabling ```--print_summary``` option as below (with ```--quantile_list 0.5 0.9 0.95```)
+Summary of the benchmark results can be viewed by enabling ```-ps```
 ```bash
-docker run --network host benchmark_client -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 --print_summary --quantile_list 0.5 .9 .95
+docker run --network host benchmark_client -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 -ps
 ```
 Sample output logs with benchmark results summary 
 
 ```
 Client 2.6
-NO_PROXY=localhost no_proxy=localhost python3 /ovms_benchmark_client/main.py -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 --print_summary --quantile_list 0.5 .9 .95
+NO_PROXY=localhost no_proxy=localhost python3 /ovms_benchmark_client/main.py -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 -ps
           XI worker: start workload...
+
 ### Benchmark Summary ###
  Request concurrency: 1
- Throughput: 89.09 FPS 
+ Throughput: 89.07 FPS 
  Latency: 
-    Mean: 11.22 ms
-    stdev: 0.89 ms
-    p50 latency: 12.78 ms 
-    p90 latency: 15.27 ms 
-    p95 latency: 15.58 ms
+    Mean: 11.23 ms
+    stdev: 0.80 ms
+    p50: 12.76 ms 
+    p90: 15.25 ms 
+    p95: 15.56 ms
 ```
 ## Dynamic models benchmarking
 
