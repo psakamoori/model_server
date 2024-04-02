@@ -262,7 +262,7 @@ if __name__ == "__main__":
                         help="database metadata configuration. default: None")
     parser.add_argument("--print_all", required=False, action="store_true",
                         help="flag to print all output")
-    parser.add_argument("--print_summary", required=False, action="store_true",
+    parser.add_argument("-ps", "--print_summary", required=False, action="store_true",
                         help="flag to print results summary")
     parser.add_argument("--print_time", required=False, action="store_true",
                         help="flag to print datetime next to each output line")
@@ -354,7 +354,11 @@ if __name__ == "__main__":
             sys.stdout.write(f"    Mean: {common_results['window_mean_latency']*1000:.2f} ms\n")
             sys.stdout.write(f"    stdev: {common_results['window_stdev_latency']*1000:.2f} ms\n")
 
-        if xargs["quantile_list"]:
+            base, factor = float(xargs["hist_base"]), float(xargs["hist_factor"])
+            xargs["quantile_list"] = [0.5, 0.9, 0.95]
+
+            common_results.recalculate_quantiles("window_", base, factor, xargs["quantile_list"])
+
             for idx, v in enumerate(xargs["quantile_list"]):
                 # Convert string to float
                 try:
@@ -368,6 +372,6 @@ if __name__ == "__main__":
                 p = str("p") + q
                 qv = str("qos_latency_") + str(idx)
 
-                sys.stdout.write(f"    {p} latency: {common_results[qv]*1000:.2f} ms \n")
+                sys.stdout.write(f"    {p}: {common_results[qv]*1000:.2f} ms \n")
 
     sys.exit(return_code)
