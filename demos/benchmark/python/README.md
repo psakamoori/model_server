@@ -282,6 +282,27 @@ XI worker: warmup_fail_stdev_latency: 0.0
 XI worker: warmup_fail_cv_latency: 0.0
 ```
 
+Summary of the benchmark results can be viewed by enabling ```-ps```
+```bash
+docker run --network host benchmark_client -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 -ps
+```
+Sample output logs with benchmark results summary 
+
+```
+Client 2.6
+NO_PROXY=localhost no_proxy=localhost python3 /ovms_benchmark_client/main.py -a localhost -r 8000 -m face-detection-retail-0005 -p 9000 -s 2 3 300 300 -t 20 -ps
+          XI worker: start workload...
+
+### Benchmark Summary ###
+ Request concurrency: 1
+ Throughput: 89.07 FPS 
+ Latency: 
+    Mean: 11.23 ms
+    stdev: 0.80 ms
+    p50: 12.76 ms 
+    p90: 15.25 ms 
+    p95: 15.56 ms
+```
 ## Dynamic models benchmarking
 
 In order to test dynamic models, `-s` (shape) parameter needs to be specified. You can use dynamic model, although some static models also can have dynamic shape specified. First download the model to workspace.
