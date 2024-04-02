@@ -123,6 +123,7 @@ docker run --network host benchmark_client -a localhost -r 8000 -l -m resnet50-b
 
 Client 2.7
 NO_PROXY=localhost no_proxy=localhost python3 /ovms_benchmark_client/main.py -a localhost -r 8000 -l -m resnet50-binary-0001 -p 9000 -i id
+
 XW id: Finished execution. If you want to run inference remove --list_models.
 XI id: try to send request to endpoint: http://localhost:8000/v1/config
 XI id: received status code is 200.
